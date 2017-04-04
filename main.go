@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"ipproxypool/hunter"
 	"ipproxypool/pool"
+	"ipproxypool/storage"
 	"ipproxypool/util"
 	"ipproxypool/web"
 	"log"
@@ -32,6 +33,10 @@ var sysStatus struct {
 	NumGoroutine int
 	CpuNum       int
 	Pid          int
+	ListGood     int
+	ListBad      int
+	ListIn       int
+	ListTotal    int
 }
 
 func init() {
@@ -82,6 +87,10 @@ func status(w http.ResponseWriter, r *http.Request) {
 	sysStatus.GoVersion = runtime.Version()
 	sysStatus.Hostname, _ = os.Hostname()
 	sysStatus.Pid = os.Getpid()
+	sysStatus.ListGood = len(storage.ProxyItemListGood)
+	sysStatus.ListBad = len(storage.ProxyItemListBad)
+	sysStatus.ListIn = len(storage.ProxyItemListIn)
+	sysStatus.ListTotal = storage.GlobalProxyMap.Len()
 	if bs, err := json.Marshal(&sysStatus); err != nil {
 		http.Error(w, fmt.Sprintf("%s", err), 500)
 	} else {

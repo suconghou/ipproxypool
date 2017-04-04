@@ -1,24 +1,85 @@
 package hunter
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"ipproxypool/request"
 	"ipproxypool/storage"
 	"ipproxypool/util"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func StartHunter() {
+	go func() {
+		for {
+			ipList, err := iP181()
+			if err != nil {
+				util.Debug(fmt.Sprintf("task has an error %s", err))
+			} else {
+				storage.SaveProxyIn(ipList)
+			}
+			ipList, err = xici()
+			if err != nil {
+				util.Debug(fmt.Sprintf("task has an error %s", err))
+			} else {
+				storage.SaveProxyIn(ipList)
+			}
+			ipList, err = ydl()
+			if err != nil {
+				util.Debug(fmt.Sprintf("task has an error %s", err))
+			} else {
+				storage.SaveProxyIn(ipList)
+			}
+			ipList, err = xdl()
+			if err != nil {
+				util.Debug(fmt.Sprintf("task has an error %s", err))
+			} else {
+				storage.SaveProxyIn(ipList)
+			}
+			time.Sleep(time.Second * 120)
+		}
+	}()
 
-	ipList, err := ydl()
-	fmt.Println(len(ipList), err)
+	go func() {
+		for {
+			item := <-storage.ProxyItemListIn
+			item = storage.ProxyStatus(item)
+			if item.Status {
+				item.GoodStatus = item.GoodStatus + 1
+				storage.ProxyItemListGood <- item
+			} else {
+				item.BadStatus = item.BadStatus + 1
+				storage.ProxyItemListBad <- item
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			time.Sleep(time.Second * 60)
+			item := <-storage.ProxyItemListBad
+			item = storage.ProxyStatus(item)
+			if item.Status {
+				item.GoodStatus = item.GoodStatus + 1
+				storage.ProxyItemListGood <- item
+			} else if (item.GoodStatus < 1 && item.BadStatus > 10) || (item.BadStatus > 20) {
+				item.BadStatus = item.BadStatus + 1
+				storage.ProxyItemListBad <- item
+			} else {
+				util.Debug(fmt.Sprintf("drop bad proxy %s:%d", item.Ip, item.Port))
+			}
+		}
+	}()
+
 }
 
 func iP181() ([]storage.ProxyItem, error) {
 	var url string = "http://www.ip181.com/"
 	var ipList []storage.ProxyItem
-	doc, err := initDocument(url)
+	doc, err := request.Document(url)
 	if err != nil {
 		return ipList, err
 	}
@@ -47,7 +108,7 @@ func iP181() ([]storage.ProxyItem, error) {
 func xici() ([]storage.ProxyItem, error) {
 	var url string = "http://www.xicidaili.com/"
 	var ipList []storage.ProxyItem
-	doc, err := initDocument(url)
+	doc, err := request.Document(url)
 	if err != nil {
 		return ipList, err
 	}
@@ -77,7 +138,7 @@ func xici() ([]storage.ProxyItem, error) {
 func ydl() ([]storage.ProxyItem, error) {
 	var url string = "http://www.youdaili.net/Daili/http/"
 	var ipList []storage.ProxyItem
-	doc, err := initDocument(url)
+	doc, err := request.Document(url)
 	if err != nil {
 		return ipList, err
 	}
@@ -85,7 +146,7 @@ func ydl() ([]storage.ProxyItem, error) {
 	if !exists {
 		return ipList, fmt.Errorf("ydl entry url not found")
 	}
-	doc, err = initDocument(url)
+	doc, err = request.Document(url)
 	if err != nil {
 		return ipList, err
 	}
@@ -102,7 +163,7 @@ func ydl() ([]storage.ProxyItem, error) {
 	}
 	for i := 2; i <= totalPageInt; i++ {
 		currUrl := strings.Replace(url, ".html", fmt.Sprintf("_%d.html", i), 1)
-		doc, err = initDocument(currUrl)
+		doc, err = request.Document(currUrl)
 		if err != nil {
 			continue
 		}
@@ -115,5 +176,33 @@ func ydl() ([]storage.ProxyItem, error) {
 	ipList = storage.FindAllProxy(str)
 	util.Debug(fmt.Sprintf("ydl done. found %d from %d pages", len(ipList), totalPageInt))
 	return ipList, nil
+}
 
+func xdl() ([]storage.ProxyItem, error) {
+	var ipList []storage.ProxyItem
+	var url string = "http://www.xdaili.cn/ipagent/freeip/getFreeIps?page=1&rows=10"
+	str, err := request.HttpGet(url, map[string]string{"Accept": "application/json, text/javascript, */*; q=0.01"})
+	if err != nil {
+		return ipList, err
+	}
+	type res struct {
+		Rows []struct {
+			Ip   string
+			Port string
+		}
+	}
+	var info res
+	err = json.Unmarshal(str, &info)
+	if err != nil {
+		return ipList, err
+	}
+	for _, item := range info.Rows {
+		portInt, err := strconv.Atoi(item.Port)
+		if err != nil {
+			continue
+		}
+		ipList = append(ipList, storage.NewProxyItem(item.Ip, uint16(portInt)))
+	}
+	util.Debug(fmt.Sprintf("xdl done.found %d", len(ipList)))
+	return ipList, nil
 }

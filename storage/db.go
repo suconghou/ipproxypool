@@ -1,88 +1,76 @@
 package storage
 
 import (
-	_ "database/sql"
 	"fmt"
 	_ "log"
-	// _"github.com/mattn/go-sqlite3"
+	"sync"
 )
 
 var (
-	ProxyItemListIn  chan ProxyItem = make(chan ProxyItem, 100)
-	ProxyItemListOut chan ProxyItem = make(chan ProxyItem, 100)
+	ProxyItemListIn   chan ProxyItem = make(chan ProxyItem, 100)
+	ProxyItemListGood chan ProxyItem = make(chan ProxyItem, 100)
+	ProxyItemListBad  chan ProxyItem = make(chan ProxyItem, 1000)
 )
 
-type ProxyItem struct {
-	Ip      string
-	Port    uint16
-	Latency uint16
-	Status  bool
-	Http    bool
-	Https   bool
+type ProxyMap struct {
+	Data map[string]ProxyItem
+	Lock *sync.Mutex
 }
 
-// var db *sql.DB
+type ProxyItem struct {
+	Ip         string
+	Port       uint16
+	Latency    uint16
+	Status     bool
+	Http       bool
+	Https      bool
+	GoodStatus uint32
+	BadStatus  uint32
+}
+
+var GlobalProxyMap = ProxyMap{
+	map[string]ProxyItem{},
+	new(sync.Mutex),
+}
 
 func init() {
-	// fmt.Println("init db")
-	// currDb, err := sql.Open("sqlite3", "./foo.db")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Println(currDb)
-	// db = currDb
 
+}
+
+func (proxyMap ProxyMap) Get(key string) (ProxyItem, bool) {
+	proxyMap.Lock.Lock()
+	val, ok := proxyMap.Data[key]
+	proxyMap.Lock.Unlock()
+	return val, ok
+}
+
+func (proxyMap ProxyMap) Set(key string, val ProxyItem) {
+	proxyMap.Lock.Lock()
+	proxyMap.Data[key] = val
+	proxyMap.Lock.Unlock()
+}
+
+func (proxyMap ProxyMap) Len() int {
+	return len(proxyMap.Data)
 }
 
 func NewProxyItem(ip string, port uint16) ProxyItem {
-	return ProxyItem{
-		ip,
-		port,
-		0,
-		false,
-		false,
-		false,
-	}
+	return ProxyItem{Ip: ip, Port: port, Latency: 0, Status: false, Http: false, Https: false, GoodStatus: 0, BadStatus: 0}
 }
 
-// 爬虫爬入的检查状态,存入数据库
-func saveIn() {
-
-	for {
-		item := <-ProxyItemListIn
-		fmt.Println(item)
-	}
-
-}
-
-// 补充队列,从数据库中取出,并检查状态,状态好的进入线程池
-func getFromDb() {
-	for {
-		item, ok := GetOneProxyFromDb()
-		if ok {
-			item = ProxyStatus(item)
-			ProxyItemListOut <- item
-		} else {
-			fmt.Println("db is empty")
+// 爬虫爬入的入栈,与现有对比去重
+func SaveProxyIn(ipList []ProxyItem) {
+	for _, item := range ipList {
+		proxy := fmt.Sprintf("%s:%d", item.Ip, item.Port)
+		if _, ok := GlobalProxyMap.Get(proxy); !ok {
+			GlobalProxyMap.Set(proxy, item)
+			ProxyItemListIn <- item
 		}
 	}
 }
 
-func GetOneProxyFromDb() (ProxyItem, bool) {
-	var item ProxyItem
-	return item, true
-}
-
 // 从线程池中取出可用的用于服务
 func GetOneProxy() ProxyItem {
-	item := <-ProxyItemListOut
+	item := <-ProxyItemListGood
 	return item
-}
-
-func FlushListOut() {
-	length := len(ProxyItemListOut)
-	var i int = 0
-	for ; i < length; i++ {
-		GetOneProxy()
-	}
 }

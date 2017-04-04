@@ -2,12 +2,11 @@ package storage
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
+	"ipproxypool/request"
+
+	"os"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 var IpReg *regexp.Regexp = regexp.MustCompile(`((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))`)
@@ -19,44 +18,20 @@ var urls map[string]string = map[string]string{
 	"http":  "http://ip.taobao.com/service/getIpInfo.php?ip=myip",
 }
 
-func GetByProxy(url_addr, proxy_addr string) ([]byte, error) {
-	request, err := http.NewRequest("GET", url_addr, nil)
-	if err != nil {
-		return nil, err
-	}
-	proxy, err := url.Parse(proxy_addr)
-	if err != nil {
-		return nil, err
-	}
-	client := &http.Client{
-		Timeout: time.Second * 10,
-		Transport: &http.Transport{
-			Proxy: http.ProxyURL(proxy),
-		},
-	}
-	res, err := client.Do(request)
-	if err != nil {
-		return nil, err
-	}
-	str, err := ioutil.ReadAll(res.Body)
-	res.Body.Close()
-	if err != nil {
-		return str, err
-	}
-	return str, nil
-}
-
+// 保存更新后的状态,同时判断响应是否是正确的
 func ProxyStatus(item ProxyItem) ProxyItem {
-	proxy := fmt.Sprintf("%s:%s", item.Ip, item.Port)
+	proxy := fmt.Sprintf("%s:%d", item.Ip, item.Port)
+	proxyHttp := fmt.Sprintf("http://%s", proxy)
+	// proxyHttpS:=fmt.Sprintf("https://%s",proxy)
 	for _, url := range urls {
-		res, err := GetByProxy(url, proxy)
+		res, err := request.GetByProxy(url, proxyHttp)
 		if err != nil {
 			item.Status = false
 		} else {
 			item.Status = true
-			fmt.Println(res)
+			os.Stderr.Write(res)
 		}
-
+		GlobalProxyMap.Set(proxy, item)
 	}
 	return item
 }
