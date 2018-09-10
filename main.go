@@ -20,7 +20,6 @@ var (
 var sysStatus struct {
 	Uptime       string
 	GoVersion    string
-	Hostname     string
 	MemAllocated uint64
 	MemTotal     uint64
 	MemSys       uint64
