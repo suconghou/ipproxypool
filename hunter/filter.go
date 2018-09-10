@@ -3,13 +3,14 @@ package hunter
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"ipproxypool/request"
 	"ipproxypool/storage"
 	"ipproxypool/util"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 func StartHunter() {
@@ -43,41 +44,10 @@ func StartHunter() {
 		}
 	}()
 
-	go func() {
-		for {
-			item := <-storage.ProxyItemListIn
-			item = storage.ProxyStatus(item)
-			if item.Status {
-				item.GoodStatus = item.GoodStatus + 1
-				storage.ProxyItemListGood <- item
-			} else {
-				item.BadStatus = item.BadStatus + 1
-				storage.ProxyItemListBad <- item
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			time.Sleep(time.Second * 60)
-			item := <-storage.ProxyItemListBad
-			item = storage.ProxyStatus(item)
-			if item.Status {
-				item.GoodStatus = item.GoodStatus + 1
-				storage.ProxyItemListGood <- item
-			} else if (item.GoodStatus < 1 && item.BadStatus > 10) || (item.BadStatus > 20) {
-				item.BadStatus = item.BadStatus + 1
-				storage.ProxyItemListBad <- item
-			} else {
-				util.Debug(fmt.Sprintf("drop bad proxy %s:%d", item.Ip, item.Port))
-			}
-		}
-	}()
-
 }
 
 func iP181() ([]storage.ProxyItem, error) {
-	var url string = "http://www.ip181.com/"
+	var url = "http://www.ip181.com/"
 	var ipList []storage.ProxyItem
 	doc, err := request.Document(url)
 	if err != nil {
@@ -106,7 +76,7 @@ func iP181() ([]storage.ProxyItem, error) {
 }
 
 func xici() ([]storage.ProxyItem, error) {
-	var url string = "http://www.xicidaili.com/"
+	var url = "http://www.xicidaili.com/"
 	var ipList []storage.ProxyItem
 	doc, err := request.Document(url)
 	if err != nil {
@@ -136,7 +106,7 @@ func xici() ([]storage.ProxyItem, error) {
 }
 
 func ydl() ([]storage.ProxyItem, error) {
-	var url string = "http://www.youdaili.net/Daili/http/"
+	var url = "http://www.youdaili.net/Daili/http/"
 	var ipList []storage.ProxyItem
 	doc, err := request.Document(url)
 	if err != nil {
@@ -180,7 +150,7 @@ func ydl() ([]storage.ProxyItem, error) {
 
 func xdl() ([]storage.ProxyItem, error) {
 	var ipList []storage.ProxyItem
-	var url string = "http://www.xdaili.cn/ipagent/freeip/getFreeIps?page=1&rows=10"
+	var url = "http://www.xdaili.cn/ipagent/freeip/getFreeIps?page=1&rows=10"
 	str, err := request.HttpGet(url, map[string]string{"Accept": "application/json, text/javascript, */*; q=0.01"})
 	if err != nil {
 		return ipList, err

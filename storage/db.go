@@ -2,7 +2,6 @@ package storage
 
 import (
 	"fmt"
-	_ "log"
 	"sync"
 )
 

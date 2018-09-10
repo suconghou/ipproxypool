@@ -22,3 +22,9 @@ curl -d "121.226.153.226:808
 80.240.112.217:8000" http://127.0.0.1:7090/api/add/x
 
 
+http://tonybai.com/2015/11/17/tcp-programming-in-golang/
+
+
+使用 mysql 数据库
+
+内存缓存最优数据

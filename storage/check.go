@@ -6,14 +6,15 @@ import (
 
 	"os"
 	"regexp"
-	"strconv"
 )
 
-var IpReg *regexp.Regexp = regexp.MustCompile(`((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))`)
+var (
+	IpReg = regexp.MustCompile(`((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))`)
 
-var ProxyReg *regexp.Regexp = regexp.MustCompile(`((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))):([1-9]?\d{0,4})`)
+	ProxyReg *regexp.Regexp = regexp.MustCompile(`((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))):([1-9]?\d{0,4})`)
+)
 
-var urls map[string]string = map[string]string{
+var urls = map[string]string{
 	"https": "https://ipinfo.io",
 	"http":  "http://ip.taobao.com/service/getIpInfo.php?ip=myip",
 }
@@ -34,17 +35,4 @@ func ProxyStatus(item ProxyItem) ProxyItem {
 		GlobalProxyMap.Set(proxy, item)
 	}
 	return item
-}
-
-func FindAllProxy(str string) []ProxyItem {
-	var ipList []ProxyItem
-	matches := ProxyReg.FindAllStringSubmatch(str, -1)
-	for _, item := range matches {
-		portInt, err := strconv.Atoi(item[8])
-		if err != nil {
-			continue
-		}
-		ipList = append(ipList, NewProxyItem(item[1], uint16(portInt)))
-	}
-	return ipList
 }
