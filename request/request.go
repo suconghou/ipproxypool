@@ -64,15 +64,15 @@ func newClient(timeout int, urlproxy string) *http.Client {
 	return client
 }
 
-func newRequest(targetURL string, method string, reqHeader http.Header, body io.Reader) *http.Request {
+func newRequest(targetURL string, method string, reqHeader http.Header, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, targetURL, body)
 	if err != nil {
-		panic(err)
+		return req, err
 	}
 	if reqHeader != nil {
 		req.Header = reqHeader
 	}
-	return req
+	return req, nil
 }
 
 // New Fetch
@@ -121,11 +121,14 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 			body = strings.NewReader(item.body)
 		}
 		var (
-			client  *http.Client
-			request = newRequest(item.url.String(), method, headers, body)
-			retry   = item.retry
-			limit   = item.limit
+			client       *http.Client
+			request, err = newRequest(item.url.String(), method, headers, body)
+			retry        = item.retry
+			limit        = item.limit
 		)
+		if err != nil {
+			return nil, err
+		}
 		if (item.proxy != "" && item.proxy != f.proxy) || (item.timeout > 0 && item.timeout < 120 && item.timeout != f.timeout) {
 			client = newClient(item.timeout, item.proxy)
 		} else {
@@ -166,13 +169,16 @@ func GetResponse(url *url.URL, method string, headers http.Header, data string, 
 		timeout = 7200
 	}
 	if retry < 1 || retry > 100 {
-		retry = 10
+		retry = 3
 	}
 	var (
-		client  = newClient(timeout, proxy)
-		request = newRequest(url.String(), method, headers, body)
-		limit   = 0
+		client       = newClient(timeout, proxy)
+		request, err = newRequest(url.String(), method, headers, body)
+		limit        = 0
 	)
+	if err != nil {
+		return nil, err
+	}
 	var taskItem = &task{
 		client,
 		request,

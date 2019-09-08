@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"ipproxypool/request"
+	"ipproxypool/util"
 	"net/http"
 	"net/url"
 	"os"
@@ -51,7 +52,9 @@ func (w *Worker) Start(thread uint8) {
 				// 忽略重复任务,根据name(url地址)字段判断
 				if _, ok := w.statusMap[t.Name]; !ok {
 					w.statusMap[t.Name] = t
-					t.after(t.start())
+					if err := t.after(t.start()); err != nil {
+						util.Logger.Print(err)
+					}
 				}
 			}
 		}()
@@ -71,6 +74,7 @@ func (w *Worker) GetStatus() map[string]*TaskItem {
 }
 
 func (t *TaskItem) start() (int64, string, error) {
+	t.Status = itemStatusStarted
 	var savepath string
 	if _, err := os.Stat(t.Path); os.IsNotExist(err) {
 		savepath = t.Path
@@ -92,6 +96,12 @@ func (t *TaskItem) start() (int64, string, error) {
 	defer resp.Body.Close()
 	defer file.Close()
 	n, err := io.Copy(file, resp.Body)
+	if err == nil {
+		if resp.StatusCode < http.StatusOK || resp.StatusCode > http.StatusIMUsed {
+			// status not ok, we logger
+			err = fmt.Errorf("%v %s", t.URL, resp.Status)
+		}
+	}
 	return n, savepath, err
 }
 
@@ -105,15 +115,15 @@ func (t *TaskItem) before() {
 	}
 }
 
-func (t *TaskItem) after(n int64, savepath string, err error) {
+func (t *TaskItem) after(n int64, savepath string, err error) error {
 	if err != nil {
 		t.Status = itemStatusRejected
-		fmt.Println(err)
 	} else {
 		t.Status = itemStatusResolved
 	}
 	t.Path = savepath
 	t.Size = n
+	return err
 }
 
 func resolveName(u *url.URL) string {
