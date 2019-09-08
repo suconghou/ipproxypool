@@ -1,4 +1,4 @@
-package pool
+package proxy
 
 import (
 	"bytes"
@@ -10,10 +10,6 @@ import (
 	"os"
 	"strings"
 )
-
-func ServeConnection() {
-	// httpWorker()
-}
 
 func httpWorker() {
 	l, err := net.Listen("tcp", ":8080")

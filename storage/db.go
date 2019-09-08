@@ -1,75 +1,56 @@
 package storage
 
-import (
-	"fmt"
-	"sync"
-)
+import "time"
 
 var (
-	ProxyItemListIn   chan ProxyItem = make(chan ProxyItem, 100)
-	ProxyItemListGood chan ProxyItem = make(chan ProxyItem, 100)
-	ProxyItemListBad  chan ProxyItem = make(chan ProxyItem, 1000)
+	proxyItemListIn   = make(chan ProxyItem, 100)
+	proxyItemListGood = make(chan ProxyItem, 100)
+	proxyItemListBad  = make(chan ProxyItem, 100)
 )
 
-type ProxyMap struct {
-	Data map[string]ProxyItem
-	Lock *sync.Mutex
-}
-
+// ProxyItem is one proxy
 type ProxyItem struct {
-	Ip         string
-	Port       uint16
-	Latency    uint16
-	Status     bool
-	Http       bool
-	Https      bool
-	GoodStatus uint32
-	BadStatus  uint32
-}
-
-var GlobalProxyMap = ProxyMap{
-	map[string]ProxyItem{},
-	new(sync.Mutex),
+	IP      string `json:"ip"`
+	Port    uint16 `json:"port"`
+	Latency uint16 `json:"latency"`
+	Status  bool   `json:"status"`
+	Succeed uint32 `json:"succeed"`
+	Failed  uint32 `json:"failed"`
 }
 
 func init() {
-
+	go func() {
+		for {
+			item := <-proxyItemListIn
+			now := time.Now()
+			if proxyOpen(item) {
+				item.Latency = uint16(time.Since(now).Seconds() * 1000)
+				item.Status = true
+				item.Succeed++
+				proxyItemListGood <- item
+			} else {
+				item.Status = false
+				item.Failed++
+				proxyItemListBad <- item
+			}
+		}
+	}()
 }
 
-func (proxyMap ProxyMap) Get(key string) (ProxyItem, bool) {
-	proxyMap.Lock.Lock()
-	val, ok := proxyMap.Data[key]
-	proxyMap.Lock.Unlock()
-	return val, ok
-}
-
-func (proxyMap ProxyMap) Set(key string, val ProxyItem) {
-	proxyMap.Lock.Lock()
-	proxyMap.Data[key] = val
-	proxyMap.Lock.Unlock()
-}
-
-func (proxyMap ProxyMap) Len() int {
-	return len(proxyMap.Data)
-}
-
+// NewProxyItem create new proxy item
 func NewProxyItem(ip string, port uint16) ProxyItem {
-	return ProxyItem{Ip: ip, Port: port, Latency: 0, Status: false, Http: false, Https: false, GoodStatus: 0, BadStatus: 0}
+	return ProxyItem{IP: ip, Port: port, Latency: 0, Status: false, Succeed: 0, Failed: 0}
 }
 
-// 爬虫爬入的入栈,与现有对比去重
+// SaveProxyIn add new proxy to check
 func SaveProxyIn(ipList []ProxyItem) {
 	for _, item := range ipList {
-		proxy := fmt.Sprintf("%s:%d", item.Ip, item.Port)
-		if _, ok := GlobalProxyMap.Get(proxy); !ok {
-			GlobalProxyMap.Set(proxy, item)
-			ProxyItemListIn <- item
-		}
+		proxyItemListIn <- item
 	}
 }
 
-// 从线程池中取出可用的用于服务
+// GetOneProxy return one good proxy
 func GetOneProxy() ProxyItem {
-	item := <-ProxyItemListGood
+	item := <-proxyItemListGood
 	return item
 }

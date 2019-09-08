@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"ipproxypool/hunter"
 	"ipproxypool/route"
 	"ipproxypool/util"
 	"net/http"
@@ -36,6 +37,7 @@ func main() {
 	flag.IntVar(&port, "p", 6060, "listen port")
 	flag.StringVar(&host, "h", "", "bind address")
 	flag.Parse()
+	hunter.Start()
 	if err := serve(host, port); err != nil {
 		util.Logger.Print(err)
 	}
