@@ -67,7 +67,9 @@ func routeMatch(w http.ResponseWriter, r *http.Request) {
 	for _, p := range route.Route {
 		if p.Reg.MatchString(r.URL.Path) {
 			found = true
-			p.Handler(w, r, p.Reg.FindStringSubmatch(r.URL.Path))
+			if err := p.Handler(w, r, p.Reg.FindStringSubmatch(r.URL.Path)); err != nil {
+				util.Logger.Print(err)
+			}
 			break
 		}
 	}
@@ -89,7 +91,7 @@ func fallback(w http.ResponseWriter, r *http.Request) {
 
 func tryFiles(files []string, w http.ResponseWriter, r *http.Request) bool {
 	for _, file := range files {
-		var realpath string = filepath.Join(".", file)
+		realpath := filepath.Join("./public", file)
 		if f, err := os.Stat(realpath); err == nil {
 			if f.Mode().IsRegular() {
 				http.ServeFile(w, r, realpath)
