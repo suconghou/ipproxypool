@@ -148,7 +148,7 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 			limit,
 		}
 	}
-	return getURLBody(tasks)
+	return getTasksData(tasks)
 }
 
 // GetResponse for large http response
@@ -185,10 +185,31 @@ func GetResponse(url *url.URL, method string, headers http.Header, data string, 
 		retry,
 		limit,
 	}
-	return getURLResponse(taskItem)
+	return getTaskResponse(taskItem)
 }
 
-func getURLResponse(taskItem *task) (*http.Response, error) {
+// GetResponseData like GetResponse but return bytes for easy use
+func GetResponseData(target string, timeout int, headers http.Header) ([]byte, error) {
+	var (
+		method       = "GET"
+		data         = ""
+		proxy        = ""
+		retry        = 2
+		limit  int64 = 1048576
+	)
+	u, err := url.Parse(target)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := GetResponse(u, method, headers, data, proxy, timeout, retry)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ioutil.ReadAll(io.LimitReader(resp.Body, limit))
+}
+
+func getTaskResponse(taskItem *task) (*http.Response, error) {
 	var (
 		times = 0
 		resp  *http.Response
@@ -204,7 +225,7 @@ func getURLResponse(taskItem *task) (*http.Response, error) {
 	return resp, err
 }
 
-func getURLBody(tasks []*task) (map[string][]byte, error) {
+func getTasksData(tasks []*task) (map[string][]byte, error) {
 	var (
 		ch       = make(chan *resItem)
 		response = make(map[string][]byte)
@@ -213,7 +234,7 @@ func getURLBody(tasks []*task) (map[string][]byte, error) {
 		go func(taskItem *task) {
 			var (
 				url       = taskItem.request.URL.String()
-				resp, err = getURLResponse(taskItem)
+				resp, err = getTaskResponse(taskItem)
 			)
 			if err != nil {
 				ch <- &resItem{

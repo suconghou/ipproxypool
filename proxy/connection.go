@@ -13,8 +13,7 @@ import (
 	"golang.org/x/net/proxy"
 )
 
-// Start for proxy request
-func Start() {
+func init() {
 	go func() {
 		var address = "0.0.0.0:6677"
 		if err := serve(address); err != nil {
