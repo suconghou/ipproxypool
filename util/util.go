@@ -2,10 +2,12 @@ package util
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -32,4 +34,19 @@ func PortOpen(ipPort string) bool {
 		return false
 	}
 	return true
+}
+
+// IoCopy copy two stream
+func IoCopy(c1, c2 io.ReadWriteCloser) error {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { io.Copy(c1, c2); wg.Done() }()
+	go func() { io.Copy(c2, c1); wg.Done() }()
+	var e1 = c1.Close()
+	var e2 = c2.Close()
+	wg.Wait()
+	if e1 == nil {
+		return e2
+	}
+	return e1
 }

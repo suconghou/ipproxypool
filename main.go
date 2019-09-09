@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"ipproxypool/hunter"
+	"ipproxypool/proxy"
 	"ipproxypool/route"
 	"ipproxypool/util"
 	"net/http"
@@ -38,6 +39,7 @@ func main() {
 	flag.StringVar(&host, "h", "", "bind address")
 	flag.Parse()
 	hunter.Start()
+	proxy.Start()
 	if err := serve(host, port); err != nil {
 		util.Logger.Print(err)
 	}
