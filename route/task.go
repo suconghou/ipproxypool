@@ -1,9 +1,6 @@
 package route
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"ipproxypool/stream"
 	"ipproxypool/util"
 	"net/http"
@@ -31,20 +28,8 @@ func taskinfo(w http.ResponseWriter, r *http.Request, match []string) error {
 
 // 添加新下载任务
 func taskadd(w http.ResponseWriter, r *http.Request, match []string) error {
-	bs, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
-	if err == nil {
-		if len(bs) <= 64 {
-			err = fmt.Errorf("bad request")
-		}
-	}
-	if err != nil {
-		util.JSONPut(w, resp{-2, err.Error()})
-		return err
-	}
 	var data taskItem
-	err = json.Unmarshal(bs, &data)
-	if err != nil {
-		util.JSONPut(w, resp{-3, err.Error()})
+	if err := parse(w, r, &data); err != nil {
 		return err
 	}
 	urlinfo, err := url.Parse(data.URL)

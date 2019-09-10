@@ -1,9 +1,9 @@
 package request
 
 import (
-	"fmt"
 	"io"
 	"io/ioutil"
+	"ipproxypool/util"
 	"net/http"
 	"net/url"
 	"strings"
@@ -24,23 +24,25 @@ type Fetcher struct {
 
 // FetchConfig http request config for post payload parse
 type FetchConfig struct {
-	headers http.Header
-	method  string
-	timeout int
-	proxy   string
-	urls    []*URLItem
+	Headers http.Header
+	Method  string
+	Timeout int
+	Proxy   string
+	Retry   int
+	Limit   int
+	Urls    []*URLItem
 }
 
 // URLItem define one fetch item config
 type URLItem struct {
-	url     *url.URL
-	method  string
-	body    string
-	headers http.Header
-	timeout int
-	proxy   string
-	retry   int
-	limit   int
+	URL     *url.URL
+	Method  string
+	Body    string
+	Headers http.Header
+	Timeout int
+	Proxy   string
+	Retry   int
+	Limit   int
 }
 
 type resItem struct {
@@ -78,8 +80,10 @@ func newRequest(targetURL string, method string, reqHeader http.Header, body io.
 // New Fetch
 func New(config *FetchConfig) *Fetcher {
 	var (
-		method  = config.method
-		timeout = config.timeout
+		method  = config.Method
+		timeout = config.Timeout
+		retry   = config.Retry
+		limit   = config.Limit
 	)
 	if !isValidMethod(method) {
 		method = "GET"
@@ -87,28 +91,42 @@ func New(config *FetchConfig) *Fetcher {
 	if timeout < 1 || timeout > 120 {
 		timeout = 20
 	}
+	if retry < 1 || retry > 100 {
+		retry = 3
+	}
+	if limit < 1 {
+		limit = 1048576
+	}
 	return &Fetcher{
-		headers: config.headers,
+		headers: config.Headers,
 		method:  method,
 		timeout: timeout,
-		proxy:   config.proxy,
-		client:  newClient(config.timeout, config.proxy),
-		urls:    config.urls,
+		proxy:   config.Proxy,
+		retry:   retry,
+		limit:   limit,
+		client:  newClient(config.Timeout, config.Proxy),
+		urls:    config.Urls,
 	}
 }
 
 // Do the fetch, get resp and parse
-func (f Fetcher) Do() {
-	resp, err := f.doFetch()
-	fmt.Println(resp, err)
+func (f Fetcher) Do() error {
+	respMap, err := f.doFetch()
+	if err != nil {
+		return err
+	}
+	for _, item := range respMap {
+		util.Logger.Print(string(item))
+	}
+	return nil
 }
 
 func (f Fetcher) doFetch() (map[string][]byte, error) {
 	var tasks = []*task{}
-	for i, item := range f.urls {
+	for _, item := range f.urls {
 		var (
-			method  = item.method
-			headers = item.headers
+			method  = item.Method
+			headers = item.Headers
 			body    io.Reader
 		)
 		if !isValidMethod(method) {
@@ -117,20 +135,20 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 		if headers == nil {
 			headers = f.headers
 		}
-		if item.body != "" {
-			body = strings.NewReader(item.body)
+		if item.Body != "" {
+			body = strings.NewReader(item.Body)
 		}
 		var (
 			client       *http.Client
-			request, err = newRequest(item.url.String(), method, headers, body)
-			retry        = item.retry
-			limit        = item.limit
+			request, err = newRequest(item.URL.String(), method, headers, body)
+			retry        = item.Retry
+			limit        = item.Limit
 		)
 		if err != nil {
 			return nil, err
 		}
-		if (item.proxy != "" && item.proxy != f.proxy) || (item.timeout > 0 && item.timeout < 120 && item.timeout != f.timeout) {
-			client = newClient(item.timeout, item.proxy)
+		if (item.Proxy != "" && item.Proxy != f.proxy) || (item.Timeout > 0 && item.Timeout < 120 && item.Timeout != f.timeout) {
+			client = newClient(item.Timeout, item.Proxy)
 		} else {
 			client = f.client
 		}
@@ -141,12 +159,12 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 		if limit <= 0 {
 			limit = f.limit
 		}
-		tasks[i] = &task{
+		tasks = append(tasks, &task{
 			client,
 			request,
 			retry,
 			limit,
-		}
+		})
 	}
 	return getTasksData(tasks)
 }
@@ -218,7 +236,7 @@ func getTaskResponse(taskItem *task) (*http.Response, error) {
 	for ; times < taskItem.retry; times++ {
 		resp, err = taskItem.client.Do(taskItem.request)
 		if err == nil {
-			break
+			return resp, err
 		}
 		time.Sleep(time.Millisecond)
 	}
@@ -236,6 +254,7 @@ func getTasksData(tasks []*task) (map[string][]byte, error) {
 				url       = taskItem.request.URL.String()
 				resp, err = getTaskResponse(taskItem)
 			)
+			util.Logger.Print(url, resp, err)
 			if err != nil {
 				ch <- &resItem{
 					nil,
