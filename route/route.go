@@ -22,12 +22,13 @@ var Route = []routeInfo{
 	{regexp.MustCompile(`^/api/proxy/info$`), proxyinfo},
 	{regexp.MustCompile(`^/api/task/info$`), taskinfo},
 	{regexp.MustCompile(`^/api/task/add$`), taskadd},
-	{regexp.MustCompile(`^/api/fetch/url$`), fetchurl},
+	{regexp.MustCompile(`^/api/fetch/([\s\w!-~]{1,50})/([\s\w!-~]{1,50})$`), fetchurl},
 }
 
 type resp struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data,omitempty"`
 }
 
 func parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
@@ -38,12 +39,12 @@ func parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
 		}
 	}
 	if err != nil {
-		util.JSONPut(w, resp{-2, err.Error()})
+		util.JSONPut(w, resp{-2, err.Error(), nil})
 		return err
 	}
 	err = json.Unmarshal(bs, v)
 	if err != nil {
-		util.JSONPut(w, resp{-3, err.Error()})
+		util.JSONPut(w, resp{-3, err.Error(), nil})
 		return err
 	}
 	return nil

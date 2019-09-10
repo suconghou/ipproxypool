@@ -32,17 +32,16 @@ func fetchurl(w http.ResponseWriter, r *http.Request, match []string) error {
 	if err := parse(w, r, &data); err != nil {
 		return err
 	}
-	util.Logger.Print(data.Urls[0].URL)
 	if len(data.Urls) < 1 {
 		err := fmt.Errorf("at least one url")
-		util.JSONPut(w, resp{-4, err.Error()})
+		util.JSONPut(w, resp{-4, err.Error(), nil})
 		return err
 	}
 	var uitems = []*request.URLItem{}
 	for _, item := range data.Urls {
 		u, err := url.Parse(item.URL)
 		if err != nil {
-			util.JSONPut(w, resp{-5, err.Error()})
+			util.JSONPut(w, resp{-5, err.Error(), nil})
 			return err
 		}
 		uitems = append(uitems, &request.URLItem{
@@ -63,8 +62,15 @@ func fetchurl(w http.ResponseWriter, r *http.Request, match []string) error {
 		Proxy:   data.Proxy,
 		Urls:    uitems,
 	}
-
-	request.New(cfg).Do()
-
-	return nil
+	ret, err := request.New(cfg).Do(match[1], match[2])
+	if err != nil {
+		util.JSONPut(w, resp{-6, err.Error(), nil})
+		return err
+	}
+	if bs, ok := ret.([]byte); ok {
+		_, err = w.Write(bs)
+	} else {
+		_, err = util.JSONPut(w, resp{0, "ok", ret})
+	}
+	return err
 }

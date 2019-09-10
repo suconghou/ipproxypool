@@ -3,7 +3,6 @@ package request
 import (
 	"io"
 	"io/ioutil"
-	"ipproxypool/util"
 	"net/http"
 	"net/url"
 	"strings"
@@ -110,15 +109,12 @@ func New(config *FetchConfig) *Fetcher {
 }
 
 // Do the fetch, get resp and parse
-func (f Fetcher) Do() error {
+func (f Fetcher) Do(action string, params string) (interface{}, error) {
 	respMap, err := f.doFetch()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	for _, item := range respMap {
-		util.Logger.Print(string(item))
-	}
-	return nil
+	return process(respMap, action, params)
 }
 
 func (f Fetcher) doFetch() (map[string][]byte, error) {
@@ -178,7 +174,11 @@ func GetResponse(url *url.URL, method string, headers http.Header, data string, 
 		method = "GET"
 	}
 	if headers == nil {
-		headers = http.Header{}
+		headers = http.Header{
+			"User-Agent": []string{
+				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
+			},
+		}
 	}
 	if data != "" {
 		body = strings.NewReader(data)
@@ -254,7 +254,6 @@ func getTasksData(tasks []*task) (map[string][]byte, error) {
 				url       = taskItem.request.URL.String()
 				resp, err = getTaskResponse(taskItem)
 			)
-			util.Logger.Print(url, resp, err)
 			if err != nil {
 				ch <- &resItem{
 					nil,

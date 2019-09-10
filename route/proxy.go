@@ -35,19 +35,19 @@ func proxyadd(w http.ResponseWriter, r *http.Request, match []string) error {
 		}
 	}
 	if err != nil {
-		util.JSONPut(w, resp{-2, err.Error()})
+		util.JSONPut(w, resp{-2, err.Error(), nil})
 		return err
 	}
 	var data []proxyItem
 	err = json.Unmarshal(bs, &data)
 	if err != nil {
-		util.JSONPut(w, resp{-3, err.Error()})
+		util.JSONPut(w, resp{-3, err.Error(), nil})
 		return err
 	}
 	for _, v := range data {
 		storage.NewProxyItem(v.IP, v.Port)
 	}
-	_, err = util.JSONPut(w, resp{0, "ok"})
+	_, err = util.JSONPut(w, resp{0, "ok", nil})
 	return err
 }
 

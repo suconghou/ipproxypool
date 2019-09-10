@@ -34,7 +34,7 @@ func taskadd(w http.ResponseWriter, r *http.Request, match []string) error {
 	}
 	urlinfo, err := url.Parse(data.URL)
 	if err != nil {
-		util.JSONPut(w, resp{-4, err.Error()})
+		util.JSONPut(w, resp{-4, err.Error(), nil})
 		return err
 	}
 	var task = &stream.TaskItem{

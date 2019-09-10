@@ -6,7 +6,6 @@ import (
 	"ipproxypool/request"
 	"ipproxypool/storage"
 	"ipproxypool/util"
-	"net/http"
 	"regexp"
 	"strconv"
 	"time"
@@ -20,11 +19,6 @@ type ipport struct {
 var (
 	ipReg    = regexp.MustCompile(`((?:(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(?:25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d))))`)
 	proxyReg = regexp.MustCompile(`(((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?):[1-9]?\d{0,4})`)
-	headers  = http.Header{
-		"User-Agent": []string{
-			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
-		},
-	}
 
 	ipProxy = make(chan *ipport, 100)
 	ipSet   = map[string]uint32{}
@@ -56,7 +50,7 @@ func init() {
 
 func ip66() error {
 	var url = "http://www.66ip.cn/mo.php?sxb=&tqsl=1000&port=&export=&ktip=&sxa=&submit=%CC%E1++%C8%A1&textarea=http%3A%2F%2Fwww.66ip.cn%2F%3Fsxb%3D%26tqsl%3D10%26ports%255B%255D2%3D%26ktip%3D%26sxa%3D%26radio%3Dradio%26submit%3D%25CC%25E1%2B%2B%25C8%25A1"
-	data, err := request.GetResponseData(url, 6, headers)
+	data, err := request.GetResponseData(url, 6, nil)
 	if err != nil {
 		return err
 	}
