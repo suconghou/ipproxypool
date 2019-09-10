@@ -48,5 +48,11 @@ func taskadd(w http.ResponseWriter, r *http.Request, match []string) error {
 		Name:    data.Name,
 		Path:    data.Path,
 	}
-	return stream.DefaultWorker.Add(task)
+	err = stream.DefaultWorker.Add(task)
+	if err != nil {
+		util.JSONPut(w, resp{-5, err.Error(), nil})
+		return err
+	}
+	_, err = util.JSONPut(w, resp{0, "ok", nil})
+	return err
 }

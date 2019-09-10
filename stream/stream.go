@@ -21,7 +21,7 @@ func init() {
 // NewWorker create new worker
 func NewWorker() *Worker {
 	return &Worker{
-		receive:   make(chan *TaskItem, 4),
+		receive:   make(chan *TaskItem, 100),
 		statusMap: map[string]*TaskItem{},
 	}
 }
