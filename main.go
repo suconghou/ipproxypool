@@ -34,16 +34,21 @@ func main() {
 	var (
 		port int
 		host string
+		root string
 	)
 	flag.IntVar(&port, "p", 6060, "listen port")
 	flag.StringVar(&host, "h", "", "bind address")
+	flag.StringVar(&root, "d", "", "document root")
 	flag.Parse()
-	if err := serve(host, port); err != nil {
+	if err := serve(host, port, root); err != nil {
 		util.Logger.Print(err)
 	}
 }
 
-func serve(host string, port int) error {
+func serve(host string, port int, root string) error {
+	if root != "" {
+		http.Handle("/public/", http.StripPrefix("/public", http.FileServer(http.Dir(root))))
+	}
 	http.HandleFunc("/status", status)
 	http.HandleFunc("/", routeMatch)
 	util.Logger.Printf("Starting up on port %d", port)
@@ -93,7 +98,7 @@ func fallback(w http.ResponseWriter, r *http.Request) {
 
 func tryFiles(files []string, w http.ResponseWriter, r *http.Request) bool {
 	for _, file := range files {
-		realpath := filepath.Join("./public", file)
+		realpath := filepath.Join("./static", file)
 		if f, err := os.Stat(realpath); err == nil {
 			if f.Mode().IsRegular() {
 				http.ServeFile(w, r, realpath)
