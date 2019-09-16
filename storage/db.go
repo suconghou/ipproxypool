@@ -23,7 +23,7 @@ type ProxyItem struct {
 }
 
 func init() {
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 1; i++ {
 		go func() {
 			for {
 				select {

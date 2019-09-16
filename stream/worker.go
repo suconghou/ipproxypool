@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -35,42 +37,73 @@ type TaskItem struct {
 	Size    int64       `json:"size"`
 }
 
+// WorkerStatus intro work status
+type WorkerStatus struct {
+	Thread int32                `json:"thread"`
+	Runing int32                `json:"runing"`
+	Tasks  int                  `json:"tasks"`
+	Items  map[string]*TaskItem `json:"items"`
+}
+
 // Worker do job
 type Worker struct {
+	thread    int32
+	runing    int32
 	receive   chan *TaskItem
 	statusMap map[string]*TaskItem
+	r         *sync.RWMutex
 }
 
-// Start this work use how many thread
-func (w *Worker) Start(thread uint8) {
-	for thread > 0 {
-		thread--
-		go func() {
-			for {
-				t := <-w.receive
-				t.before()
-				// 忽略重复任务,根据name(url地址)字段判断
-				if _, ok := w.statusMap[t.Name]; !ok {
-					w.statusMap[t.Name] = t
-					if err := t.after(t.start()); err != nil {
-						util.Logger.Print(err)
-					}
-				}
-			}
-		}()
-	}
-}
-
-// Add taskitem to this worker
-func (w *Worker) Add(t *TaskItem) error {
+// Put taskitem to this worker
+func (w *Worker) Put(t *TaskItem) error {
+	w.start()
 	t.Status = itemStatusWating
 	w.receive <- t
 	return nil
 }
 
+// start this work use how many thread
+func (w *Worker) start() {
+	if atomic.LoadInt32(&w.runing) < w.thread {
+		go func() {
+			defer func() {
+				atomic.AddInt32(&w.runing, -1)
+			}()
+			for {
+				select {
+				case t := <-w.receive:
+					t.before()
+					// 忽略重复任务,根据name(url地址)字段判断
+					w.r.Lock()
+					if _, ok := w.statusMap[t.Name]; !ok {
+						w.statusMap[t.Name] = t
+						w.r.Unlock()
+						if err := t.after(t.start()); err != nil {
+							util.Logger.Print(err)
+						}
+					} else {
+						w.r.Unlock()
+					}
+				case <-time.After(time.Minute):
+					return
+				}
+			}
+		}()
+		atomic.AddInt32(&w.runing, 1)
+	}
+}
+
 // GetStatus return worker status
-func (w *Worker) GetStatus() map[string]*TaskItem {
-	return w.statusMap
+func (w *Worker) GetStatus() *WorkerStatus {
+	w.r.RLock()
+	status := &WorkerStatus{
+		Thread: w.thread,
+		Runing: atomic.LoadInt32(&w.runing),
+		Tasks:  len(w.receive),
+		Items:  w.statusMap,
+	}
+	w.r.RUnlock()
+	return status
 }
 
 func (t *TaskItem) start() (int64, string, error) {
