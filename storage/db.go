@@ -1,7 +1,7 @@
 package storage
 
 import (
-	"ipproxypool/util"
+	"sync/atomic"
 	"time"
 )
 
@@ -10,6 +10,11 @@ var (
 	ProxyItemListIn = make(chan ProxyItem, 100)
 	// ProxyItemListGood for get good item
 	ProxyItemListGood = make(chan ProxyItem, 100)
+
+	// Runing current runing
+	Runing int32
+	// Thread max thread num
+	Thread int32 = 20
 )
 
 // ProxyItem is one proxy
@@ -22,38 +27,45 @@ type ProxyItem struct {
 	Failed  uint32 `json:"failed"`
 }
 
-func init() {
-	for i := 0; i < 1; i++ {
-		go func() {
-			for {
-				select {
-				case item := <-ProxyItemListIn:
-					now := time.Now()
-					if proxyOpen(item) {
-						item.Latency = uint16(time.Since(now).Seconds() * 1000)
-						item.Status = true
-						item.Succeed++
-						ProxyItemListGood <- item
-					} else {
-						item.Status = false
-						item.Failed++
-						if item.Succeed > item.Failed && item.Failed < 10 {
-							select {
-							case ProxyItemListIn <- item:
-							default:
-							}
+func start() {
+	if atomic.LoadInt32(&Runing) >= Thread {
+		return
+	}
+	go func() {
+		defer func() {
+			atomic.AddInt32(&Runing, -1)
+		}()
+		for {
+			select {
+			case item := <-ProxyItemListIn:
+				now := time.Now()
+				if proxyOpen(item) {
+					item.Latency = uint16(time.Since(now).Seconds() * 1000)
+					item.Status = true
+					item.Succeed++
+					ProxyItemListGood <- item
+				} else {
+					item.Status = false
+					item.Failed++
+					if item.Succeed > item.Failed && item.Failed < 10 {
+						select {
+						case ProxyItemListIn <- item:
+						default:
 						}
 					}
-				case <-time.After(time.Second * time.Duration(30)):
-					// 检查队列不足了,需要补充一些新的IP,去抓取吧
-					util.Logger.Print("抓取的不够哦")
 				}
+			case <-time.After(time.Minute):
+				// 没什么可检查的,需要补充一些新的IP,去抓取吧
+				return
 			}
-		}()
-	}
+		}
+	}()
+	atomic.AddInt32(&Runing, 1)
+
 }
 
 // NewProxyItem create new proxy item
 func NewProxyItem(ip string, port uint16) {
 	ProxyItemListIn <- ProxyItem{IP: ip, Port: port, Latency: 0, Status: false, Succeed: 0, Failed: 0}
+	start()
 }

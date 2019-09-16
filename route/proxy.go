@@ -7,6 +7,7 @@ import (
 	"ipproxypool/storage"
 	"ipproxypool/util"
 	"net/http"
+	"sync/atomic"
 	"time"
 )
 
@@ -55,6 +56,8 @@ func proxyinfo(w http.ResponseWriter, r *http.Request, match []string) error {
 	var data = map[string]interface{}{
 		"queued":   len(storage.ProxyItemListGood),
 		"checking": len(storage.ProxyItemListIn),
+		"thread":   atomic.LoadInt32(&storage.Thread),
+		"runing":   atomic.LoadInt32(&storage.Runing),
 	}
 	_, err := util.JSONPut(w, data)
 	return err

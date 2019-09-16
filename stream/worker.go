@@ -64,33 +64,34 @@ func (w *Worker) Put(t *TaskItem) error {
 
 // start this work use how many thread
 func (w *Worker) start() {
-	if atomic.LoadInt32(&w.runing) < w.thread {
-		go func() {
-			defer func() {
-				atomic.AddInt32(&w.runing, -1)
-			}()
-			for {
-				select {
-				case t := <-w.receive:
-					t.before()
-					// 忽略重复任务,根据name(url地址)字段判断
-					w.r.Lock()
-					if _, ok := w.statusMap[t.Name]; !ok {
-						w.statusMap[t.Name] = t
-						w.r.Unlock()
-						if err := t.after(t.start()); err != nil {
-							util.Logger.Print(err)
-						}
-					} else {
-						w.r.Unlock()
-					}
-				case <-time.After(time.Minute):
-					return
-				}
-			}
-		}()
-		atomic.AddInt32(&w.runing, 1)
+	if atomic.LoadInt32(&w.runing) >= w.thread {
+		return
 	}
+	go func() {
+		defer func() {
+			atomic.AddInt32(&w.runing, -1)
+		}()
+		for {
+			select {
+			case t := <-w.receive:
+				t.before()
+				// 忽略重复任务,根据name(url地址)字段判断
+				w.r.Lock()
+				if _, ok := w.statusMap[t.Name]; !ok {
+					w.statusMap[t.Name] = t
+					w.r.Unlock()
+					if err := t.after(t.start()); err != nil {
+						util.Logger.Print(err)
+					}
+				} else {
+					w.r.Unlock()
+				}
+			case <-time.After(time.Minute):
+				return
+			}
+		}
+	}()
+	atomic.AddInt32(&w.runing, 1)
 }
 
 // GetStatus return worker status
