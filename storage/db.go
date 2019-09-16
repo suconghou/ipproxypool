@@ -14,7 +14,7 @@ var (
 	// Runing current runing
 	Runing int32
 	// Thread max thread num
-	Thread int32 = 20
+	Thread int32 = 10
 )
 
 // ProxyItem is one proxy
@@ -43,14 +43,20 @@ func start() {
 					item.Latency = uint16(time.Since(now).Seconds() * 1000)
 					item.Status = true
 					item.Succeed++
-					ProxyItemListGood <- item
+					select {
+					case ProxyItemListGood <- item:
+					case <-time.After(time.Minute):
+						return
+					}
+
 				} else {
 					item.Status = false
 					item.Failed++
 					if item.Succeed > item.Failed && item.Failed < 10 {
 						select {
 						case ProxyItemListIn <- item:
-						default:
+						case <-time.After(time.Minute):
+							return
 						}
 					}
 				}
@@ -59,6 +65,7 @@ func start() {
 				return
 			}
 		}
+
 	}()
 	atomic.AddInt32(&Runing, 1)
 
