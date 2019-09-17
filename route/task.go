@@ -17,6 +17,7 @@ type taskItem struct {
 	Retry   int
 	Name    string
 	Path    string
+	Mode    int8
 }
 
 // 下载队列信息
@@ -47,6 +48,7 @@ func taskadd(w http.ResponseWriter, r *http.Request, match []string) error {
 		Retry:   data.Retry,
 		Name:    data.Name,
 		Path:    data.Path,
+		Mode:    data.Mode,
 	}
 	err = stream.DefaultWorker.Put(task)
 	if err != nil {

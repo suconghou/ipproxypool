@@ -129,7 +129,9 @@ func (t *TaskItem) start() (int64, string, error) {
 		case itemModeRename:
 			fpath = fmt.Sprintf("%s.%d", t.Path, time.Now().Unix())
 		case itemModeAppend:
-			flag = os.O_WRONLY | os.O_APPEND | os.O_CREATE
+			flag = os.O_WRONLY | os.O_APPEND
+		case itemModeOverWrite:
+			flag = os.O_WRONLY | os.O_TRUNC
 		case itemModeIgnore:
 			return -1, fpath, nil
 		}
