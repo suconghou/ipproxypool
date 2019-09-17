@@ -20,6 +20,12 @@ const (
 	itemStatusStarted  int8 = 2
 	itemStatusResolved int8 = 3
 	itemStatusRejected int8 = 4
+	itemStatusIgnored  int8 = 5
+
+	itemModeIgnore    int8 = 1
+	itemModeRename    int8 = 2
+	itemModeOverWrite int8 = 3
+	itemModeAppend    int8 = 4
 )
 
 // TaskItem desc the task
@@ -33,6 +39,7 @@ type TaskItem struct {
 	Retry   int         `json:"-"`
 	Name    string      `json:"name"`
 	Path    string      `json:"path"`
+	Mode    int8        `json:"mode"`
 	Status  int8        `json:"status"`
 	Size    int64       `json:"size"`
 }
@@ -57,6 +64,9 @@ type Worker struct {
 // Put taskitem to this worker
 func (w *Worker) Put(t *TaskItem) error {
 	w.start()
+	if t.Mode < itemModeIgnore || t.Mode > itemModeAppend {
+		t.Mode = itemModeIgnore
+	}
 	t.Status = itemStatusWating
 	w.receive <- t
 	return nil
@@ -109,17 +119,26 @@ func (w *Worker) GetStatus() *WorkerStatus {
 
 func (t *TaskItem) start() (int64, string, error) {
 	t.Status = itemStatusStarted
-	var savepath string
-	if _, err := os.Stat(t.Path); os.IsNotExist(err) {
-		savepath = t.Path
-	} else {
-		savepath = fmt.Sprintf("%s.%d", t.Path, time.Now().Unix())
+	var (
+		fpath = t.Path
+		flag  = os.O_WRONLY | os.O_CREATE
+		exist = util.FileExists(fpath)
+	)
+	if exist {
+		switch t.Mode {
+		case itemModeRename:
+			fpath = fmt.Sprintf("%s.%d", t.Path, time.Now().Unix())
+		case itemModeAppend:
+			flag = os.O_WRONLY | os.O_APPEND | os.O_CREATE
+		case itemModeIgnore:
+			return -1, fpath, nil
+		}
 	}
-	err := os.MkdirAll(filepath.Dir(savepath), os.ModePerm)
+	err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
 	if err != nil {
 		return 0, "", err
 	}
-	file, err := os.OpenFile(savepath, os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	file, err := os.OpenFile(fpath, flag, os.ModePerm)
 	if err != nil {
 		return 0, "", err
 	}
@@ -136,7 +155,7 @@ func (t *TaskItem) start() (int64, string, error) {
 			err = fmt.Errorf("%v %s", t.URL, resp.Status)
 		}
 	}
-	return n, savepath, err
+	return n, fpath, err
 }
 
 func (t *TaskItem) before() {
@@ -149,13 +168,17 @@ func (t *TaskItem) before() {
 	}
 }
 
-func (t *TaskItem) after(n int64, savepath string, err error) error {
+func (t *TaskItem) after(n int64, fpath string, err error) error {
 	if err != nil {
 		t.Status = itemStatusRejected
 	} else {
-		t.Status = itemStatusResolved
+		if n == -1 {
+			t.Status = itemStatusIgnored
+		} else {
+			t.Status = itemStatusResolved
+		}
 	}
-	t.Path = savepath
+	t.Path = fpath
 	t.Size = n
 	return err
 }

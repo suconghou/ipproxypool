@@ -50,3 +50,16 @@ func IoCopy(c1, c2 io.ReadWriteCloser) error {
 	}
 	return e1
 }
+
+// FileExists check if file exist or dir exist , !info.IsDir()
+func FileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	if err == nil {
+		return true
+	} else if os.IsNotExist(err) {
+		return false
+	} else {
+		// error , treat as exist, so stop create it
+		return true
+	}
+}
