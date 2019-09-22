@@ -63,3 +63,11 @@ func FileExists(filename string) bool {
 		return true
 	}
 }
+
+// ValidMethod test http method ok
+func ValidMethod(m string) bool {
+	if m == "GET" || m == "POST" || m == "PUT" || m == "DELETE" {
+		return true
+	}
+	return false
+}

@@ -3,10 +3,19 @@ package request
 import (
 	"io"
 	"io/ioutil"
+	"ipproxypool/util"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+)
+
+var (
+	defaultHeader = http.Header{
+		"User-Agent": []string{
+			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
+		},
+	}
 )
 
 // Fetcher http fetch
@@ -72,6 +81,8 @@ func newRequest(targetURL string, method string, reqHeader http.Header, body io.
 	}
 	if reqHeader != nil {
 		req.Header = reqHeader
+	} else {
+		req.Header = defaultHeader
 	}
 	return req, nil
 }
@@ -84,7 +95,7 @@ func New(config *FetchConfig) *Fetcher {
 		retry   = config.Retry
 		limit   = config.Limit
 	)
-	if !isValidMethod(method) {
+	if !util.ValidMethod(method) {
 		method = "GET"
 	}
 	if timeout < 1 || timeout > 120 {
@@ -125,7 +136,7 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 			headers = item.Headers
 			body    io.Reader
 		)
-		if !isValidMethod(method) {
+		if !util.ValidMethod(method) {
 			method = f.method
 		}
 		if headers == nil {
@@ -170,15 +181,8 @@ func GetResponse(url *url.URL, method string, headers http.Header, data string, 
 	var (
 		body io.Reader
 	)
-	if !isValidMethod(method) {
+	if !util.ValidMethod(method) {
 		method = "GET"
-	}
-	if headers == nil {
-		headers = http.Header{
-			"User-Agent": []string{
-				"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
-			},
-		}
 	}
 	if data != "" {
 		body = strings.NewReader(data)
@@ -279,11 +283,4 @@ func getTasksData(tasks []*task) (map[string][]byte, error) {
 		response[item.url] = item.bytes
 	}
 	return response, nil
-}
-
-func isValidMethod(m string) bool {
-	if m == "GET" || m == "POST" || m == "PUT" || m == "DELETE" {
-		return true
-	}
-	return false
 }

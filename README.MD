@@ -34,7 +34,9 @@ header配置
 
 ### 数据预处理
 
-​      
+​/api/fetch/(json|html|text|任意选择器)/(任意属性|html|text)
+
+
 
 1. **返回原始JSON**
 
