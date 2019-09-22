@@ -7,6 +7,7 @@ import (
 	"ipproxypool/util"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,12 +15,14 @@ import (
 )
 
 func init() {
-	go func() {
-		var address = "0.0.0.0:6677"
-		if err := serve(address); err != nil {
-			util.Logger.Print(err)
-		}
-	}()
+	var address = os.Getenv("PROXY_LISTEN")
+	if address != "" {
+		go func() {
+			if err := serve(address); err != nil {
+				util.Logger.Print(err)
+			}
+		}()
+	}
 }
 
 func serve(address string) error {

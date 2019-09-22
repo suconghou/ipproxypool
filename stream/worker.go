@@ -62,14 +62,13 @@ type Worker struct {
 }
 
 // Put taskitem to this worker
-func (w *Worker) Put(t *TaskItem) error {
+func (w *Worker) Put(t *TaskItem) {
 	w.start()
 	if t.Mode < itemModeIgnore || t.Mode > itemModeAppend {
 		t.Mode = itemModeIgnore
 	}
 	t.Status = itemStatusWating
 	w.receive <- t
-	return nil
 }
 
 // start this work use how many thread

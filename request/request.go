@@ -94,6 +94,7 @@ func New(config *FetchConfig) *Fetcher {
 		timeout = config.Timeout
 		retry   = config.Retry
 		limit   = config.Limit
+		proxy   = config.Proxy
 	)
 	if !util.ValidMethod(method) {
 		method = "GET"
@@ -104,17 +105,17 @@ func New(config *FetchConfig) *Fetcher {
 	if retry < 1 || retry > 100 {
 		retry = 3
 	}
-	if limit < 1 {
+	if limit < 1 || limit > 8388608 {
 		limit = 1048576
 	}
 	return &Fetcher{
 		headers: config.Headers,
 		method:  method,
 		timeout: timeout,
-		proxy:   config.Proxy,
+		proxy:   proxy,
 		retry:   retry,
 		limit:   limit,
-		client:  newClient(config.Timeout, config.Proxy),
+		client:  newClient(timeout, proxy),
 		urls:    config.Urls,
 	}
 }

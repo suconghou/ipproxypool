@@ -29,32 +29,36 @@ func taskinfo(w http.ResponseWriter, r *http.Request, match []string) error {
 
 // 添加新下载任务
 func taskadd(w http.ResponseWriter, r *http.Request, match []string) error {
-	var data taskItem
+	var (
+		data     []taskItem
+		taskList []*stream.TaskItem
+	)
 	if err := parse(w, r, &data); err != nil {
 		return err
 	}
-	urlinfo, err := url.Parse(data.URL)
-	if err != nil {
-		util.JSONPut(w, resp{-4, err.Error(), nil})
-		return err
+	for _, item := range data {
+		urlinfo, err := url.Parse(item.URL)
+		if err != nil {
+			util.JSONPut(w, resp{-4, err.Error(), nil})
+			return err
+		}
+		task := &stream.TaskItem{
+			URL:     urlinfo,
+			Method:  item.Method,
+			Timeout: item.Timeout,
+			Proxy:   item.Proxy,
+			Headers: item.Headers,
+			Body:    item.Body,
+			Retry:   item.Retry,
+			Name:    item.Name,
+			Path:    item.Path,
+			Mode:    item.Mode,
+		}
+		taskList = append(taskList, task)
 	}
-	var task = &stream.TaskItem{
-		URL:     urlinfo,
-		Method:  data.Method,
-		Timeout: data.Timeout,
-		Proxy:   data.Proxy,
-		Headers: data.Headers,
-		Body:    data.Body,
-		Retry:   data.Retry,
-		Name:    data.Name,
-		Path:    data.Path,
-		Mode:    data.Mode,
+	for _, task := range taskList {
+		stream.DefaultWorker.Put(task)
 	}
-	err = stream.DefaultWorker.Put(task)
-	if err != nil {
-		util.JSONPut(w, resp{-5, err.Error(), nil})
-		return err
-	}
-	_, err = util.JSONPut(w, resp{0, "ok", nil})
+	_, err := util.JSONPut(w, resp{0, "ok", nil})
 	return err
 }

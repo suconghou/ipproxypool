@@ -59,3 +59,12 @@ header配置
     * 返回页面.item元素的data-id属性和text内容
       * `/api/fetch/.item/data-id|text`
 
+
+
+## 环境变量
+
+`PROXY_LISTEN` 配置此环境变量开启代理服务器
+
+示例: `PROXY_LISTEN=0.0.0.0:6677 ./main`
+
+将开启代理服务器监听端口6677,提供http/https/socks5代理
