@@ -22,7 +22,7 @@ var Route = []routeInfo{
 	{regexp.MustCompile(`^/api/proxy/info$`), proxyinfo},
 	{regexp.MustCompile(`^/api/task/info$`), taskinfo},
 	{regexp.MustCompile(`^/api/task/add$`), taskadd},
-	{regexp.MustCompile(`^/api/fetch/([\s\w!-~]{1,50})/([\s\w!-~]{1,50})$`), fetchurl},
+	{regexp.MustCompile(`^/api/fetch/(\w{1,10})$`), fetchurl},
 }
 
 type resp struct {

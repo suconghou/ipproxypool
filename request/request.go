@@ -121,12 +121,12 @@ func New(config *FetchConfig) *Fetcher {
 }
 
 // Do the fetch, get resp and parse
-func (f Fetcher) Do(action string, params string) (interface{}, error) {
+func (f Fetcher) Do(action string, query QueryConfig) (interface{}, error) {
 	respMap, err := f.doFetch()
 	if err != nil {
 		return nil, err
 	}
-	return process(respMap, action, params)
+	return process(respMap, action, query)
 }
 
 func (f Fetcher) doFetch() (map[string][]byte, error) {
@@ -188,8 +188,8 @@ func GetResponse(url *url.URL, method string, headers http.Header, data string, 
 	if data != "" {
 		body = strings.NewReader(data)
 	}
-	if timeout < 1 || timeout > 7200 {
-		timeout = 7200
+	if timeout < 1 || timeout > 86400 {
+		timeout = 86400
 	}
 	if retry < 1 || retry > 100 {
 		retry = 3

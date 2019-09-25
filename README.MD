@@ -53,7 +53,7 @@ header配置
 4. **返回指定选择器属性值**
 
     * 返回页面所有a标签地址
-      * `/api/fetch/a/href`
+      * `/api/fetch/query/href`
     * 返回页面所有img标签src地址
       * `/api/fetch/img/src`
     * 返回页面.item元素的data-id属性和text内容

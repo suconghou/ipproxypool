@@ -14,6 +14,7 @@ type fetchcfg struct {
 	Timeout int
 	Proxy   string
 	Urls    []*itemcfg
+	Query   request.QueryConfig
 }
 
 type itemcfg struct {
@@ -62,7 +63,7 @@ func fetchurl(w http.ResponseWriter, r *http.Request, match []string) error {
 		Proxy:   data.Proxy,
 		Urls:    uitems,
 	}
-	ret, err := request.New(cfg).Do(match[1], match[2])
+	ret, err := request.New(cfg).Do(match[1], data.Query)
 	if err != nil {
 		util.JSONPut(w, resp{-6, err.Error(), nil})
 		return err
