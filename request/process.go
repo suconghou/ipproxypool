@@ -2,16 +2,17 @@ package request
 
 import (
 	"bytes"
-	"fmt"
 	"ipproxypool/util"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
 // QueryConfig for query
 type QueryConfig map[string]struct {
-	Attrs   []string
-	Methods []string
+	Attrs   map[string]string
+	Methods map[string]string
+	Query   QueryConfig
 }
 
 func process(data map[string][]byte, action string, query QueryConfig) (interface{}, error) {
@@ -42,7 +43,7 @@ func text(data map[string][]byte) ([]byte, error) {
 		if err != nil {
 			return ret, err
 		}
-		ret = append(ret, doc.Text()...)
+		ret = append(ret, strings.TrimSpace(doc.Text())...)
 	}
 	return ret, nil
 }
@@ -56,33 +57,61 @@ func findAttr(data map[string][]byte, queries QueryConfig) (map[string][]map[str
 		}
 		for q, query := range queries {
 			var oneret = []map[string]string{}
-			fmt.Println(query.Methods, query.Attrs)
 			doc.Find(q).Each(func(i int, s *goquery.Selection) {
 				var one = map[string]string{}
-				for _, attrName := range query.Attrs {
-					if attrName != "" {
-						v, _ := s.Attr(attrName)
-						one[attrName] = v
-					}
+				for attr, key := range query.Attrs {
+					v, _ := s.Attr(attr)
+					one[key] = v
 				}
-				for _, m := range query.Methods {
+				for m, key := range query.Methods {
 					switch m {
 					case "html":
 						str, err := s.Html()
-						one[m] = str
+						one[key] = str
 						if err != nil {
 							util.Logger.Print(err)
 						}
 					case "text":
-						one[m] = s.Text()
+						one[key] = s.Text()
 					default:
-						one["text"] = s.Text()
+						one[key] = s.Text()
 					}
 				}
+				subQuery(s, query.Query, &one)
 				oneret = append(oneret, one)
 			})
 			ret[q] = oneret
 		}
 	}
 	return ret, nil
+}
+
+func subQuery(doc *goquery.Selection, queries QueryConfig, one *map[string]string) {
+	if queries == nil {
+		return
+	}
+	var oneitem = *one
+	for q, query := range queries {
+		doc.Find(q).Each(func(i int, s *goquery.Selection) {
+			for attr, key := range query.Attrs {
+				v, _ := s.Attr(attr)
+				oneitem[key] = v
+			}
+			for m, key := range query.Methods {
+				switch m {
+				case "html":
+					str, err := s.Html()
+					oneitem[key] = str
+					if err != nil {
+						util.Logger.Print(err)
+					}
+				case "text":
+					oneitem[key] = s.Text()
+				default:
+					oneitem[key] = s.Text()
+				}
+			}
+			subQuery(s, query.Query, one)
+		})
+	}
 }

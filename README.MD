@@ -40,25 +40,67 @@ header配置
 
 1. **返回原始JSON**
 
-  `/api/fetch/json/map`
+  `/api/fetch/json`
   
 2. **返回html全文拼接**
 
-   `/api/fetch/html/html`
+   `/api/fetch/html`
 
 3. **返回text全文拼接**
 
-   `/api/fetch/text/text`
+   `/api/fetch/text`
 
 4. **返回指定选择器属性值**
+    `/api/fetch/query`
+    
 
-    * 返回页面所有a标签地址
-      * `/api/fetch/query/href`
-    * 返回页面所有img标签src地址
-      * `/api/fetch/img/src`
-    * 返回页面.item元素的data-id属性和text内容
-      * `/api/fetch/.item/data-id|text`
-
+```
+{
+	"urls":
+	[
+		{
+			"url":"https://v2ex.com/?tab=hot"
+			
+		},
+		{
+			"url":"https://v2ex.com/"
+		}
+	],
+	"query":
+	{
+		"#TopicsHot .item_hot_topic_title a":{
+			"attrs":{
+				"href":"link"
+			},
+			"methods":{
+				"text":"title"
+			}
+		},
+		".box .item":{
+			"query":{
+				".item_title a":{
+					"attrs":{"href":"href"},
+					"methods":{"text":"title"}
+				},
+				".count_livid":{
+					"methods":{
+						"text":"count"
+					}
+				},
+				".node":{
+					"attrs":{
+						"href":"topic_link"
+					},
+					"methods":{
+						"text":"topic"
+					}
+				}
+				
+			}
+		}
+	}
+}
+```
 
 
 ## 环境变量
