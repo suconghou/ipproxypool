@@ -12,6 +12,7 @@ type fetchcfg struct {
 	Headers http.Header
 	Method  string
 	Timeout int
+	Cache   int
 	Proxy   string
 	Urls    []*itemcfg
 	Query   request.QueryConfig
@@ -67,6 +68,9 @@ func fetchurl(w http.ResponseWriter, r *http.Request, match []string) error {
 	if err != nil {
 		util.JSONPut(w, resp{-6, err.Error(), nil})
 		return err
+	}
+	if data.Cache > 0 {
+		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", data.Cache))
 	}
 	if bs, ok := ret.([]byte); ok {
 		_, err = w.Write(bs)
