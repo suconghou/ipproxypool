@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 	_ "ipproxypool/hunter"
-	_ "ipproxypool/proxy"
+	"ipproxypool/proxy"
 	"ipproxypool/route"
 	"ipproxypool/util"
 	"net/http"
@@ -92,7 +92,11 @@ func fallback(w http.ResponseWriter, r *http.Request) {
 		files = []string{r.URL.Path, path.Join(r.URL.Path, index)}
 	}
 	if !tryFiles(files, w, r) {
-		http.NotFound(w, r)
+		if util.ValidProxyURL(r.RequestURI) {
+			proxy.URL(w, r)
+		} else {
+			http.NotFound(w, r)
+		}
 	}
 }
 

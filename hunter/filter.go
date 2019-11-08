@@ -6,6 +6,7 @@ import (
 	"ipproxypool/request"
 	"ipproxypool/storage"
 	"ipproxypool/util"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -25,6 +26,10 @@ var (
 )
 
 func init() {
+	var fetch = os.Getenv("PROXY_FETCH")
+	if fetch == "" {
+		return
+	}
 	go func() {
 		for {
 			select {

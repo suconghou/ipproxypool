@@ -143,7 +143,7 @@ func (t *TaskItem) start() (int64, string, error) {
 	if err != nil {
 		return 0, "", err
 	}
-	resp, err := request.GetResponse(t.URL, t.Method, t.Headers, t.Body, t.Proxy, t.Timeout, t.Retry)
+	resp, err := request.GetResponse(t.URL, t.Method, t.Headers, strings.NewReader(t.Body), t.Proxy, t.Timeout, t.Retry)
 	if err != nil {
 		return 0, "", err
 	}

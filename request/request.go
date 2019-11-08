@@ -178,15 +178,9 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 }
 
 // GetResponse for large http response
-func GetResponse(url *url.URL, method string, headers http.Header, data string, proxy string, timeout int, retry int) (*http.Response, error) {
-	var (
-		body io.Reader
-	)
+func GetResponse(url *url.URL, method string, headers http.Header, body io.Reader, proxy string, timeout int, retry int) (*http.Response, error) {
 	if !util.ValidMethod(method) {
 		method = "GET"
-	}
-	if data != "" {
-		body = strings.NewReader(data)
 	}
 	if timeout < 1 || timeout > 86400 {
 		timeout = 86400
@@ -211,11 +205,11 @@ func GetResponse(url *url.URL, method string, headers http.Header, data string, 
 	return getTaskResponse(taskItem)
 }
 
-// GetResponseData like GetResponse but return bytes for easy use
+// GetResponseData like GetResponse but only do GET request and return bytes for easy use
 func GetResponseData(target string, timeout int, headers http.Header) ([]byte, error) {
 	var (
-		method       = "GET"
-		data         = ""
+		method = "GET"
+		body   io.Reader
 		proxy        = ""
 		retry        = 2
 		limit  int64 = 1048576
@@ -224,7 +218,7 @@ func GetResponseData(target string, timeout int, headers http.Header) ([]byte, e
 	if err != nil {
 		return nil, err
 	}
-	resp, err := GetResponse(u, method, headers, data, proxy, timeout, retry)
+	resp, err := GetResponse(u, method, headers, body, proxy, timeout, retry)
 	if err != nil {
 		return nil, err
 	}

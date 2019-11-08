@@ -6,6 +6,8 @@ windows32:
 	CGO_ENABLED=0 GOOS=windows GOARCH=386  go build -v -o ipproxypool.exe -a -ldflags "-s -w" main.go  
 windows:
 	CGO_ENABLED=0 GOOS=windows GOARCH=amd64  go build -v -o ipproxypool.exe -a -ldflags "-s -w" main.go  
+run:
+	go run main.go
 dev:
 	go build main.go
 dockerpush:

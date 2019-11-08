@@ -7,11 +7,13 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"sync"
 	"time"
 )
 
 var (
+	regproxyurl = regexp.MustCompile(`^/(?i:https?):/{1,2}[[:print:]]+$`)
 	// Logger to stdout
 	Logger = log.New(os.Stdout, "", 0)
 )
@@ -70,4 +72,9 @@ func ValidMethod(m string) bool {
 		return true
 	}
 	return false
+}
+
+// ValidProxyURL do valid url
+func ValidProxyURL(u string) bool {
+	return regproxyurl.MatchString(u)
 }
