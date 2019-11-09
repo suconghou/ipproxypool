@@ -5,28 +5,11 @@ import (
 	"ipproxypool/request"
 	"ipproxypool/util"
 	"net/http"
-	"net/url"
 )
 
 type fetchcfg struct {
-	Headers http.Header
-	Method  string
-	Timeout int
-	Cache   int
-	Proxy   string
-	Urls    []*itemcfg
-	Query   request.QueryConfig
-}
-
-type itemcfg struct {
-	URL     string
-	Method  string
-	Body    string
-	Headers http.Header
-	Timeout int
-	Proxy   string
-	Retry   int
-	Limit   int
+	*request.FetchConfig
+	Query request.QueryConfig
 }
 
 func fetchurl(w http.ResponseWriter, r *http.Request, match []string) error {
@@ -39,32 +22,7 @@ func fetchurl(w http.ResponseWriter, r *http.Request, match []string) error {
 		util.JSONPut(w, resp{-4, err.Error(), nil})
 		return err
 	}
-	var uitems = []*request.URLItem{}
-	for _, item := range data.Urls {
-		u, err := url.Parse(item.URL)
-		if err != nil {
-			util.JSONPut(w, resp{-5, err.Error(), nil})
-			return err
-		}
-		uitems = append(uitems, &request.URLItem{
-			URL:     u,
-			Method:  item.Method,
-			Body:    item.Body,
-			Headers: item.Headers,
-			Timeout: item.Timeout,
-			Proxy:   item.Proxy,
-			Retry:   item.Retry,
-			Limit:   item.Limit,
-		})
-	}
-	var cfg = &request.FetchConfig{
-		Headers: data.Headers,
-		Method:  data.Method,
-		Timeout: data.Timeout,
-		Proxy:   data.Proxy,
-		Urls:    uitems,
-	}
-	ret, err := request.New(cfg).Do(match[1], data.Query)
+	ret, err := request.New(data.FetchConfig).Do(match[1], data.Query)
 	if err != nil {
 		util.JSONPut(w, resp{-6, err.Error(), nil})
 		return err

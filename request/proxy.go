@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+func timeoutConfig(timeout int) time.Duration {
+	return time.Duration(timeout) * time.Second
+}
+
 func tslConfig() *tls.Config {
 	return &tls.Config{InsecureSkipVerify: true}
 }

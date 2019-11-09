@@ -3,6 +3,7 @@ package request
 import (
 	"io"
 	"io/ioutil"
+	"ipproxypool/encoding"
 	"ipproxypool/util"
 	"net/http"
 	"net/url"
@@ -35,6 +36,7 @@ type FetchConfig struct {
 	Headers http.Header
 	Method  string
 	Timeout int
+	Cache   int
 	Proxy   string
 	Retry   int
 	Limit   int
@@ -43,14 +45,15 @@ type FetchConfig struct {
 
 // URLItem define one fetch item config
 type URLItem struct {
-	URL     *url.URL
-	Method  string
-	Body    string
-	Headers http.Header
-	Timeout int
-	Proxy   string
-	Retry   int
-	Limit   int
+	URL       string
+	Transform bool
+	Method    string
+	Body      string
+	Headers   http.Header
+	Timeout   int
+	Proxy     string
+	Retry     int
+	Limit     int
 }
 
 type resItem struct {
@@ -60,10 +63,11 @@ type resItem struct {
 }
 
 type task struct {
-	client  *http.Client
-	request *http.Request
-	retry   int
-	limit   int
+	client    *http.Client
+	request   *http.Request
+	retry     int
+	limit     int
+	transform bool
 }
 
 func newClient(timeout int, urlproxy string) *http.Client {
@@ -148,7 +152,7 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 		}
 		var (
 			client       *http.Client
-			request, err = newRequest(item.URL.String(), method, headers, body)
+			request, err = newRequest(item.URL, method, headers, body)
 			retry        = item.Retry
 			limit        = item.Limit
 		)
@@ -167,14 +171,78 @@ func (f Fetcher) doFetch() (map[string][]byte, error) {
 		if limit <= 0 {
 			limit = f.limit
 		}
+		transform := item.Transform
 		tasks = append(tasks, &task{
 			client,
 			request,
 			retry,
 			limit,
+			transform,
 		})
 	}
 	return getTasksData(tasks)
+}
+
+func getTasksData(tasks []*task) (map[string][]byte, error) {
+	var (
+		ch       = make(chan *resItem)
+		response = make(map[string][]byte)
+	)
+	for _, u := range tasks {
+		go func(taskItem *task) {
+			var (
+				url       = taskItem.request.URL.String()
+				resp, err = getTaskResponse(taskItem)
+			)
+			if err != nil {
+				ch <- &resItem{
+					nil,
+					url,
+					err,
+				}
+				return
+			}
+			defer resp.Body.Close()
+			limitedr := io.LimitReader(resp.Body, int64(taskItem.limit))
+			var bytes []byte
+			if taskItem.transform {
+				bytes, err = encoding.GbkReaderToUtf8(limitedr)
+			} else {
+				bytes, err = ioutil.ReadAll(limitedr)
+			}
+
+			ch <- &resItem{
+				bytes,
+				url,
+				err,
+			}
+		}(u)
+	}
+	for range tasks {
+		item := <-ch
+		if item.err != nil {
+			return response, item.err
+		}
+		response[item.url] = item.bytes
+	}
+	return response, nil
+}
+
+// 复用此方法
+func getTaskResponse(taskItem *task) (*http.Response, error) {
+	var (
+		times = 0
+		resp  *http.Response
+		err   error
+	)
+	for ; times < taskItem.retry; times++ {
+		resp, err = taskItem.client.Do(taskItem.request)
+		if err == nil {
+			return resp, err
+		}
+		time.Sleep(time.Millisecond)
+	}
+	return resp, err
 }
 
 // GetResponse for large http response
@@ -201,6 +269,7 @@ func GetResponse(url *url.URL, method string, headers http.Header, body io.Reade
 		request,
 		retry,
 		limit,
+		false,
 	}
 	return getTaskResponse(taskItem)
 }
@@ -224,58 +293,4 @@ func GetResponseData(target string, timeout int, headers http.Header) ([]byte, e
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(io.LimitReader(resp.Body, limit))
-}
-
-func getTaskResponse(taskItem *task) (*http.Response, error) {
-	var (
-		times = 0
-		resp  *http.Response
-		err   error
-	)
-	for ; times < taskItem.retry; times++ {
-		resp, err = taskItem.client.Do(taskItem.request)
-		if err == nil {
-			return resp, err
-		}
-		time.Sleep(time.Millisecond)
-	}
-	return resp, err
-}
-
-func getTasksData(tasks []*task) (map[string][]byte, error) {
-	var (
-		ch       = make(chan *resItem)
-		response = make(map[string][]byte)
-	)
-	for _, u := range tasks {
-		go func(taskItem *task) {
-			var (
-				url       = taskItem.request.URL.String()
-				resp, err = getTaskResponse(taskItem)
-			)
-			if err != nil {
-				ch <- &resItem{
-					nil,
-					url,
-					err,
-				}
-				return
-			}
-			defer resp.Body.Close()
-			bytes, err := ioutil.ReadAll(io.LimitReader(resp.Body, int64(taskItem.limit)))
-			ch <- &resItem{
-				bytes,
-				url,
-				err,
-			}
-		}(u)
-	}
-	for range tasks {
-		item := <-ch
-		if item.err != nil {
-			return response, item.err
-		}
-		response[item.url] = item.bytes
-	}
-	return response, nil
 }
