@@ -30,6 +30,7 @@ func fetchurl(w http.ResponseWriter, r *http.Request, match []string) error {
 	if data.Cache > 0 {
 		w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%d", data.Cache))
 	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if bs, ok := ret.([]byte); ok {
 		_, err = w.Write(bs)
 	} else {
