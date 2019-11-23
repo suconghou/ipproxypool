@@ -41,7 +41,7 @@ func main() {
 	flag.StringVar(&root, "d", "", "document root")
 	flag.Parse()
 	if err := serve(host, port, root); err != nil {
-		util.Logger.Print(err)
+		util.Log.Print(err)
 	}
 }
 
@@ -51,7 +51,7 @@ func serve(host string, port int, root string) error {
 	}
 	http.HandleFunc("/status", status)
 	http.HandleFunc("/", routeMatch)
-	util.Logger.Printf("Starting up on port %d", port)
+	util.Log.Printf("Starting up on port %d", port)
 	return http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), nil)
 }
 
@@ -75,7 +75,7 @@ func routeMatch(w http.ResponseWriter, r *http.Request) {
 		if p.Reg.MatchString(r.URL.Path) {
 			found = true
 			if err := p.Handler(w, r, p.Reg.FindStringSubmatch(r.URL.Path)); err != nil {
-				util.Logger.Print(err)
+				util.Log.Print(err)
 			}
 			break
 		}

@@ -1,9 +1,9 @@
 package proxy
 
 import (
-	"cloud/util"
 	"io"
 	"ipproxypool/request"
+	"ipproxypool/util"
 	"net/http"
 	"net/url"
 	"strings"

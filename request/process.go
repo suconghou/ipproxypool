@@ -69,7 +69,7 @@ func findAttr(data map[string][]byte, queries QueryConfig) (map[string][]map[str
 						str, err := s.Html()
 						one[key] = str
 						if err != nil {
-							util.Logger.Print(err)
+							util.Log.Print(err)
 						}
 					case "text":
 						one[key] = s.Text()
@@ -103,7 +103,7 @@ func subQuery(doc *goquery.Selection, queries QueryConfig, one *map[string]strin
 					str, err := s.Html()
 					oneitem[key] = str
 					if err != nil {
-						util.Logger.Print(err)
+						util.Log.Print(err)
 					}
 				case "text":
 					oneitem[key] = s.Text()

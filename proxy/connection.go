@@ -19,7 +19,7 @@ func init() {
 	if address != "" {
 		go func() {
 			if err := serve(address); err != nil {
-				util.Logger.Print(err)
+				util.Log.Print(err)
 			}
 		}()
 	}
@@ -33,18 +33,18 @@ func serve(address string) error {
 	for {
 		client, err := l.Accept()
 		if err != nil {
-			util.Logger.Print(err)
+			util.Log.Print(err)
 			continue
 		}
 		go func() {
 			defer func() {
 				if err := recover(); err != nil {
-					util.Logger.Print(err)
+					util.Log.Print(err)
 				}
 			}()
 			err := proxyRequest(client, getdialer())
 			if err != nil && err != io.EOF {
-				util.Logger.Print(err)
+				util.Log.Print(err)
 			}
 		}()
 	}

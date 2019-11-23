@@ -90,7 +90,7 @@ func (w *Worker) start() {
 					w.statusMap[t.Name] = t
 					w.r.Unlock()
 					if err := t.after(t.start()); err != nil {
-						util.Logger.Print(err)
+						util.Log.Print(err)
 					}
 				} else {
 					w.r.Unlock()

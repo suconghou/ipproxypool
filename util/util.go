@@ -14,8 +14,8 @@ import (
 
 var (
 	regproxyurl = regexp.MustCompile(`^/(?i:https?):/{1,2}[[:print:]]+$`)
-	// Logger to stdout
-	Logger = log.New(os.Stdout, "", 0)
+	// Log to stdout
+	Log = log.New(os.Stdout, "", 0)
 )
 
 // JSONPut resp json

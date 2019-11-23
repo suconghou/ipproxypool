@@ -44,7 +44,7 @@ func init() {
 			case <-time.After(time.Second):
 				go func() {
 					if err := ip66(); err != nil {
-						util.Logger.Print(err)
+						util.Log.Print(err)
 					}
 				}()
 				time.Sleep(time.Second * 5)
