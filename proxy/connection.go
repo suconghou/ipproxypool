@@ -7,25 +7,14 @@ import (
 	"ipproxypool/util"
 	"net"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 
 	"golang.org/x/net/proxy"
 )
 
-func init() {
-	var address = os.Getenv("PROXY_LISTEN")
-	if address != "" {
-		go func() {
-			if err := serve(address); err != nil {
-				util.Log.Print(err)
-			}
-		}()
-	}
-}
-
-func serve(address string) error {
+// Serve start the proxy server
+func Serve(address string) error {
 	l, err := net.Listen("tcp", address)
 	if err != nil {
 		return err

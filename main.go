@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	_ "ipproxypool/hunter"
+	"ipproxypool/hunter"
 	"ipproxypool/proxy"
 	"ipproxypool/route"
 	"ipproxypool/util"
@@ -32,14 +32,29 @@ var sysStatus struct {
 
 func main() {
 	var (
-		port int
-		host string
-		root string
+		port        int
+		host        string
+		root        string
+		proxyfetch  bool
+		proxylisten string
 	)
 	flag.IntVar(&port, "p", 6060, "listen port")
 	flag.StringVar(&host, "h", "", "bind address")
 	flag.StringVar(&root, "d", "", "document root")
+	flag.BoolVar(&proxyfetch, "proxyfetch", false, "enable proxy fetch")
+	flag.StringVar(&proxylisten, "proxylisten", "", "proxy listen adr")
 	flag.Parse()
+	if proxyfetch {
+		go hunter.Start()
+	}
+	if proxylisten != "" {
+		go func() {
+			if err := proxy.Serve(proxylisten); err != nil {
+				util.Log.Print(err)
+			}
+		}()
+	}
+
 	if err := serve(host, port, root); err != nil {
 		util.Log.Print(err)
 	}

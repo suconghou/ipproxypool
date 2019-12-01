@@ -6,7 +6,6 @@ import (
 	"ipproxypool/request"
 	"ipproxypool/storage"
 	"ipproxypool/util"
-	"os"
 	"regexp"
 	"strconv"
 	"time"
@@ -25,32 +24,27 @@ var (
 	ipSet   = map[string]uint32{}
 )
 
-func init() {
-	var fetch = os.Getenv("PROXY_FETCH")
-	if fetch == "" {
-		return
-	}
-	go func() {
-		for {
-			select {
-			case item := <-ipProxy:
-				var ipstr = fmt.Sprintf("%s:%d", item.ip, item.port)
-				if v, ok := ipSet[ipstr]; ok {
-					ipSet[ipstr] = v + 1
-				} else {
-					ipSet[ipstr] = 1
-					storage.NewProxyItem(item.ip, item.port)
-				}
-			case <-time.After(time.Second):
-				go func() {
-					if err := ip66(); err != nil {
-						util.Log.Print(err)
-					}
-				}()
-				time.Sleep(time.Second * 5)
+// Start search ip proxy
+func Start() {
+	for {
+		select {
+		case item := <-ipProxy:
+			var ipstr = fmt.Sprintf("%s:%d", item.ip, item.port)
+			if v, ok := ipSet[ipstr]; ok {
+				ipSet[ipstr] = v + 1
+			} else {
+				ipSet[ipstr] = 1
+				storage.NewProxyItem(item.ip, item.port)
 			}
+		case <-time.After(time.Second):
+			go func() {
+				if err := ip66(); err != nil {
+					util.Log.Print(err)
+				}
+			}()
+			time.Sleep(time.Second * 5)
 		}
-	}()
+	}
 }
 
 func ip66() error {
