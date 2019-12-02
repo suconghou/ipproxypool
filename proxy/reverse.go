@@ -10,14 +10,14 @@ import (
 )
 
 var (
-	xheaders = []string{
-		"X-Forwarded-For",
-		"X-Forwarded-Host",
-		"X-Forwarded-Server",
-		"X-Forwarded-Port",
-		"X-Forwarded-Proto",
-		"X-Client-Ip",
-		"Cookie",
+	fwdHeaders = []string{
+		"User-Agent",
+		"Accept",
+		"Accept-Encoding",
+		"Accept-Language",
+		"If-Modified-Since",
+		"If-None-Match",
+		"Range",
 	}
 	exposeHeaders = []string{
 		"Accept-Ranges",
@@ -38,17 +38,21 @@ func cleanHeader(header http.Header, headers []string) http.Header {
 	return header
 }
 
-func copyHeader(from http.Header, to http.Header, headers []string) {
+func copyHeader(from http.Header, to http.Header, headers []string) http.Header {
 	for _, k := range headers {
 		if v := from.Get(k); v != "" {
 			to.Set(k, v)
 		}
 	}
+	return to
 }
 
 // URL proxy request to target
 func URL(w http.ResponseWriter, r *http.Request) {
-	var u = r.RequestURI
+	var (
+		u         = r.RequestURI
+		reqHeader = http.Header{}
+	)
 	u = strings.Replace(strings.TrimPrefix(u, "/"), ":/", "://", 1)
 	target, err := url.Parse(u)
 	if err != nil {
@@ -56,7 +60,7 @@ func URL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer r.Body.Close()
-	resp, err := request.GetResponse(target, r.Method, cleanHeader(r.Header, xheaders), r.Body, "", 600, 2)
+	resp, err := request.GetResponse(target, r.Method, copyHeader(r.Header, reqHeader, fwdHeaders), r.Body, "", 600, 2)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
