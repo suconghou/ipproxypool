@@ -29,6 +29,8 @@ var (
 		"Content-Encoding",
 		"Date",
 		"Expires",
+		"Last-Modified",
+		"Etag",
 		"Cache-Control",
 	}
 )
