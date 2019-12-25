@@ -68,7 +68,7 @@ func FileExists(filename string) bool {
 
 // ValidMethod test http method ok
 func ValidMethod(m string) bool {
-	if m == "GET" || m == "POST" || m == "PUT" || m == "DELETE" {
+	if m == http.MethodGet || m == http.MethodPost || m == http.MethodPut || m == http.MethodDelete {
 		return true
 	}
 	return false

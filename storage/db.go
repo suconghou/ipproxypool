@@ -1,20 +1,29 @@
 package storage
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"ipproxypool/util"
 	"sync/atomic"
 	"time"
 )
 
+const (
+	proxyfile = "proxylist.json"
+)
+
 var (
-	// ProxyItemListIn for push in
+	// ProxyItemListIn 代表检查队列, 如果检测未通过,并且曾经是好的,并且小于3次检测不通过,则会稍后再次检验
 	ProxyItemListIn = make(chan ProxyItem, 100)
-	// ProxyItemListGood for get good item
+	// ProxyItemListGood 代表已检查通过的,可能是socks5或https代理,不保留纯http代理
 	ProxyItemListGood = make(chan ProxyItem, 100)
 
 	// Runing current runing
 	Runing int32
 	// Thread max thread num
 	Thread int32 = 10
+
+	proxyList = []ProxyItem{}
 )
 
 // ProxyItem is one proxy
@@ -52,7 +61,7 @@ func start() {
 				} else {
 					item.Status = false
 					item.Failed++
-					if item.Succeed > item.Failed && item.Failed < 10 {
+					if item.Succeed > item.Failed && item.Failed < 3 {
 						select {
 						case ProxyItemListIn <- item:
 						case <-time.After(time.Minute):
@@ -62,6 +71,7 @@ func start() {
 				}
 			case <-time.After(time.Minute):
 				// 没什么可检查的,需要补充一些新的IP,去抓取吧
+				util.Log.Print("需要抓取新IP")
 				return
 			}
 		}
@@ -75,4 +85,12 @@ func start() {
 func NewProxyItem(ip string, port uint16) {
 	ProxyItemListIn <- ProxyItem{IP: ip, Port: port, Latency: 0, Status: false, Succeed: 0, Failed: 0}
 	start()
+}
+
+func dump(data []ProxyItem) error {
+	var bs, err = json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(proxyfile, bs, 0666)
 }

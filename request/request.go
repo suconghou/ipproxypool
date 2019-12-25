@@ -101,7 +101,7 @@ func New(config *FetchConfig) *Fetcher {
 		proxy   = config.Proxy
 	)
 	if !util.ValidMethod(method) {
-		method = "GET"
+		method = http.MethodGet
 	}
 	if timeout < 1 || timeout > 120 {
 		timeout = 20
@@ -248,7 +248,7 @@ func getTaskResponse(taskItem *task) (*http.Response, error) {
 // GetResponse for large http response
 func GetResponse(url *url.URL, method string, headers http.Header, body io.Reader, proxy string, timeout int, retry int) (*http.Response, error) {
 	if !util.ValidMethod(method) {
-		method = "GET"
+		method = http.MethodGet
 	}
 	if timeout < 1 || timeout > 86400 {
 		timeout = 86400
@@ -277,7 +277,7 @@ func GetResponse(url *url.URL, method string, headers http.Header, body io.Reade
 // GetResponseData like GetResponse but only do GET request and return bytes for easy use
 func GetResponseData(target string, timeout int, headers http.Header) ([]byte, error) {
 	var (
-		method = "GET"
+		method = http.MethodGet
 		body   io.Reader
 		proxy        = ""
 		retry        = 2

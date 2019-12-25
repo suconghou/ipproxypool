@@ -8,6 +8,8 @@
 
 API `/api/proxy/info` 可获取此相关信息
 
+每隔一分钟dump为json存储,以备后续启动时直接载入
+
 ### 模块二: http/https/socks代理
 
 参数 `-proxylisten` 开启此功能
