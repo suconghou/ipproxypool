@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"ipproxypool/hunter"
 	"ipproxypool/proxy"
 	"ipproxypool/route"
+	"ipproxypool/spider"
 	"ipproxypool/util"
 	"net/http"
 	"os"
@@ -45,7 +45,7 @@ func main() {
 	flag.StringVar(&proxylisten, "proxylisten", "", "proxy listen adr")
 	flag.Parse()
 	if proxyfetch {
-		go hunter.Start()
+		go spider.Start()
 	}
 	if proxylisten != "" {
 		go func() {
@@ -54,10 +54,7 @@ func main() {
 			}
 		}()
 	}
-
-	if err := serve(host, port, root); err != nil {
-		util.Log.Print(err)
-	}
+	util.Log.Fatal(serve(host, port, root))
 }
 
 func serve(host string, port int, root string) error {

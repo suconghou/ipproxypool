@@ -60,8 +60,7 @@ func findAttr(data map[string][]byte, queries QueryConfig) (map[string][]map[str
 			doc.Find(q).Each(func(i int, s *goquery.Selection) {
 				var one = map[string]string{}
 				for attr, key := range query.Attrs {
-					v, _ := s.Attr(attr)
-					one[key] = v
+					one[key] = s.AttrOr(attr, "")
 				}
 				for m, key := range query.Methods {
 					switch m {
@@ -94,8 +93,7 @@ func subQuery(doc *goquery.Selection, queries QueryConfig, one *map[string]strin
 	for q, query := range queries {
 		doc.Find(q).Each(func(i int, s *goquery.Selection) {
 			for attr, key := range query.Attrs {
-				v, _ := s.Attr(attr)
-				oneitem[key] = v
+				oneitem[key] = s.AttrOr(attr, "")
 			}
 			for m, key := range query.Methods {
 				switch m {
