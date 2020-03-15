@@ -87,10 +87,24 @@ func NewProxyItem(ip string, port uint16) {
 	start()
 }
 
-func dump(data []ProxyItem) error {
-	var bs, err = json.Marshal(data)
+func dump() error {
+	var bs, err = json.Marshal(proxyList)
 	if err != nil {
 		return err
 	}
 	return ioutil.WriteFile(proxyfile, bs, 0666)
+}
+
+func load() error {
+	var bs, err = ioutil.ReadFile(proxyfile)
+	if err != nil {
+		return err
+	}
+	var data []ProxyItem
+	err = json.Unmarshal(bs, &data)
+	if err != nil {
+		return err
+	}
+	proxyList = data
+	return nil
 }

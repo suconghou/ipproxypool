@@ -32,17 +32,12 @@ var sysStatus struct {
 
 func main() {
 	var (
-		port        int
-		host        string
-		root        string
-		proxyfetch  bool
-		proxylisten string
+		port        = *flag.Int("p", 6060, "listen port")
+		host        = *flag.String("h", "", "bind address")
+		root        = *flag.String("d", "", "document root")
+		proxyfetch  = *flag.Bool("proxyfetch", false, "enable proxy fetch")
+		proxylisten = *flag.String("proxylisten", "", "proxy listen adr")
 	)
-	flag.IntVar(&port, "p", 6060, "listen port")
-	flag.StringVar(&host, "h", "", "bind address")
-	flag.StringVar(&root, "d", "", "document root")
-	flag.BoolVar(&proxyfetch, "proxyfetch", false, "enable proxy fetch")
-	flag.StringVar(&proxylisten, "proxylisten", "", "proxy listen adr")
 	flag.Parse()
 	if proxyfetch {
 		go spider.Start()

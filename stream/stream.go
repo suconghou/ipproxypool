@@ -20,7 +20,6 @@ func init() {
 func NewWorker() *Worker {
 	return &Worker{
 		thread:    20,
-		runing:    0,
 		receive:   make(chan *TaskItem, 100),
 		statusMap: map[string]*TaskItem{},
 		r:         &sync.RWMutex{},
