@@ -77,19 +77,15 @@ func status(w http.ResponseWriter, r *http.Request) {
 }
 
 func routeMatch(w http.ResponseWriter, r *http.Request) {
-	found := false
 	for _, p := range route.Route {
 		if p.Reg.MatchString(r.URL.Path) {
-			found = true
 			if err := p.Handler(w, r, p.Reg.FindStringSubmatch(r.URL.Path)); err != nil {
 				util.Log.Print(err)
 			}
-			break
+			return
 		}
 	}
-	if !found {
-		fallback(w, r)
-	}
+	fallback(w, r)
 }
 
 func fallback(w http.ResponseWriter, r *http.Request) {
