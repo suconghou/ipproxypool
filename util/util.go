@@ -25,7 +25,7 @@ func JSONPut(w http.ResponseWriter, v interface{}) (int, error) {
 		return 0, err
 	}
 	h := w.Header()
-	h.Set("Content-Type", "text/json; charset=utf-8")
+	h.Set("Content-Type", "application/json; charset=utf-8")
 	return w.Write(bs)
 }
 
