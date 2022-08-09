@@ -2,8 +2,8 @@ package storage
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"ipproxypool/util"
+	"os"
 	"sync/atomic"
 	"time"
 )
@@ -92,11 +92,11 @@ func dump() error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(proxyfile, bs, 0666)
+	return os.WriteFile(proxyfile, bs, 0666)
 }
 
 func load() error {
-	var bs, err = ioutil.ReadFile(proxyfile)
+	var bs, err = os.ReadFile(proxyfile)
 	if err != nil {
 		return err
 	}

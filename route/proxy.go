@@ -3,7 +3,7 @@ package route
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"ipproxypool/storage"
 	"ipproxypool/util"
 	"net/http"
@@ -29,7 +29,7 @@ func proxyone(w http.ResponseWriter, r *http.Request, match []string) error {
 }
 
 func proxyadd(w http.ResponseWriter, r *http.Request, match []string) error {
-	bs, err := ioutil.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
+	bs, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
 	if err == nil {
 		if len(bs) <= 4 {
 			err = fmt.Errorf("bad request")

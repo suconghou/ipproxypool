@@ -2,7 +2,6 @@ package request
 
 import (
 	"io"
-	"io/ioutil"
 	"ipproxypool/encoding"
 	"ipproxypool/util"
 	"net/http"
@@ -208,7 +207,7 @@ func getTasksData(tasks []*task) (map[string][]byte, error) {
 			if taskItem.transform {
 				bytes, err = encoding.GbkReaderToUtf8(limitedr)
 			} else {
-				bytes, err = ioutil.ReadAll(limitedr)
+				bytes, err = io.ReadAll(limitedr)
 			}
 
 			ch <- &resItem{
@@ -292,5 +291,5 @@ func GetResponseData(target string, timeout int, headers http.Header) ([]byte, e
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return ioutil.ReadAll(io.LimitReader(resp.Body, limit))
+	return io.ReadAll(io.LimitReader(resp.Body, limit))
 }
