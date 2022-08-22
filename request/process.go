@@ -15,7 +15,7 @@ type QueryConfig map[string]struct {
 	Query   QueryConfig
 }
 
-func process(data map[string][]byte, action string, query QueryConfig) (interface{}, error) {
+func process(data map[string][]byte, action string, query QueryConfig) (any, error) {
 	switch action {
 	case "html":
 		return html(data), nil

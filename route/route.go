@@ -26,12 +26,12 @@ var Route = []routeInfo{
 }
 
 type resp struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data,omitempty"`
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data,omitempty"`
 }
 
-func parse(w http.ResponseWriter, r *http.Request, v interface{}) error {
+func parse(w http.ResponseWriter, r *http.Request, v any) error {
 	bs, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
 	if err == nil {
 		if len(bs) <= 4 {

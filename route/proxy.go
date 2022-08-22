@@ -53,7 +53,7 @@ func proxyadd(w http.ResponseWriter, r *http.Request, match []string) error {
 }
 
 func proxyinfo(w http.ResponseWriter, r *http.Request, match []string) error {
-	var data = map[string]interface{}{
+	var data = map[string]any{
 		"queued":   len(storage.ProxyItemListGood),
 		"checking": len(storage.ProxyItemListIn),
 		"thread":   atomic.LoadInt32(&storage.Thread),

@@ -124,7 +124,7 @@ func New(config *FetchConfig) *Fetcher {
 }
 
 // Do the fetch, get resp and parse
-func (f Fetcher) Do(action string, query QueryConfig) (interface{}, error) {
+func (f Fetcher) Do(action string, query QueryConfig) (any, error) {
 	respMap, err := f.doFetch()
 	if err != nil {
 		return nil, err
@@ -202,7 +202,7 @@ func getTasksData(tasks []*task) (map[string][]byte, error) {
 				return
 			}
 			defer resp.Body.Close()
-			limitedr := io.LimitReader(resp.Body, int64(taskItem.limit))
+			limitedr := http.MaxBytesReader(nil, resp.Body, int64(taskItem.limit))
 			var bytes []byte
 			if taskItem.transform {
 				bytes, err = encoding.GbkReaderToUtf8(limitedr)
@@ -291,5 +291,5 @@ func GetResponseData(target string, timeout int, headers http.Header) ([]byte, e
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return io.ReadAll(io.LimitReader(resp.Body, limit))
+	return io.ReadAll(http.MaxBytesReader(nil, resp.Body, limit))
 }
