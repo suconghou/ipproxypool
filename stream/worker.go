@@ -42,6 +42,8 @@ type TaskItem struct {
 	Mode    int8        `json:"mode"`
 	Status  int8        `json:"status"`
 	Size    int64       `json:"size"`
+	Start   int64       `json:"start"` // 任务开始时间
+	End     int64       `json:"end"`   // 任务结束时间
 }
 
 // WorkerStatus intro work status
@@ -86,7 +88,9 @@ func (w *Worker) start() {
 				t.before()
 				// 忽略重复任务,根据name(url地址)字段判断
 				w.r.Lock()
-				if _, ok := w.statusMap[t.Name]; !ok {
+				item := w.statusMap[t.Name]
+				// 任务不存在或者存在但是Rejected状态，可以继续
+				if item == nil || item.Status == 4 {
 					w.statusMap[t.Name] = t
 					w.r.Unlock()
 					if err := t.after(t.start()); err != nil {
@@ -118,6 +122,7 @@ func (w *Worker) GetStatus() *WorkerStatus {
 
 func (t *TaskItem) start() (int64, string, error) {
 	t.Status = itemStatusStarted
+	t.Start = time.Now().Unix()
 	var (
 		fpath = t.Path
 		flag  = os.O_WRONLY | os.O_CREATE
@@ -137,15 +142,15 @@ func (t *TaskItem) start() (int64, string, error) {
 	}
 	err := os.MkdirAll(filepath.Dir(fpath), os.ModePerm)
 	if err != nil {
-		return 0, "", err
+		return 0, fpath, err
 	}
 	file, err := os.OpenFile(fpath, flag, os.ModePerm)
 	if err != nil {
-		return 0, "", err
+		return 0, fpath, err
 	}
 	resp, err := request.GetResponse(t.URL, t.Method, t.Headers, strings.NewReader(t.Body), t.Proxy, t.Timeout, t.Retry)
 	if err != nil {
-		return 0, "", err
+		return 0, fpath, err
 	}
 	defer resp.Body.Close()
 	defer file.Close()
@@ -181,6 +186,7 @@ func (t *TaskItem) after(n int64, fpath string, err error) error {
 	}
 	t.Path = fpath
 	t.Size = n
+	t.End = time.Now().Unix()
 	return err
 }
 

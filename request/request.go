@@ -6,54 +6,16 @@ import (
 	"ipproxypool/util"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
 var (
 	defaultHeader = http.Header{
 		"User-Agent": []string{
-			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/76.0.3809.132 Safari/537.36",
+			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36",
 		},
 	}
 )
-
-// Fetcher http fetch
-type Fetcher struct {
-	headers http.Header
-	method  string
-	timeout int
-	proxy   string
-	retry   int
-	limit   int
-	client  *http.Client
-	urls    []*URLItem
-}
-
-// FetchConfig http request config for post payload parse
-type FetchConfig struct {
-	Headers http.Header
-	Method  string
-	Timeout int
-	Cache   int
-	Proxy   string
-	Retry   int
-	Limit   int
-	Urls    []*URLItem
-}
-
-// URLItem define one fetch item config
-type URLItem struct {
-	URL       string
-	Transform bool
-	Method    string
-	Body      string
-	Headers   http.Header
-	Timeout   int
-	Proxy     string
-	Retry     int
-	Limit     int
-}
 
 type resItem struct {
 	bytes []byte
@@ -61,15 +23,15 @@ type resItem struct {
 	err   error
 }
 
-type task struct {
-	client    *http.Client
-	request   *http.Request
-	retry     int
-	limit     int
-	transform bool
+type Task struct {
+	Client    *http.Client
+	Request   *http.Request
+	Retry     int
+	Limit     int
+	Transform bool
 }
 
-func newClient(timeout int, urlproxy string) *http.Client {
+func NewClient(timeout int, urlproxy string) *http.Client {
 	var client = &http.Client{
 		Timeout:   timeoutConfig(timeout),
 		Transport: transportConfig(urlproxy),
@@ -77,7 +39,7 @@ func newClient(timeout int, urlproxy string) *http.Client {
 	return client
 }
 
-func newRequest(targetURL string, method string, reqHeader http.Header, body io.Reader) (*http.Request, error) {
+func NewRequest(targetURL string, method string, reqHeader http.Header, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, targetURL, body)
 	if err != nil {
 		return req, err
@@ -90,107 +52,16 @@ func newRequest(targetURL string, method string, reqHeader http.Header, body io.
 	return req, nil
 }
 
-// New Fetch
-func New(config *FetchConfig) *Fetcher {
-	var (
-		method  = config.Method
-		timeout = config.Timeout
-		retry   = config.Retry
-		limit   = config.Limit
-		proxy   = config.Proxy
-	)
-	if !util.ValidMethod(method) {
-		method = http.MethodGet
-	}
-	if timeout < 1 || timeout > 120 {
-		timeout = 20
-	}
-	if retry < 1 || retry > 100 {
-		retry = 3
-	}
-	if limit < 1 || limit > 8388608 {
-		limit = 1048576
-	}
-	return &Fetcher{
-		headers: config.Headers,
-		method:  method,
-		timeout: timeout,
-		proxy:   proxy,
-		retry:   retry,
-		limit:   limit,
-		client:  newClient(timeout, proxy),
-		urls:    config.Urls,
-	}
-}
-
-// Do the fetch, get resp and parse
-func (f Fetcher) Do(action string, query QueryConfig) (any, error) {
-	respMap, err := f.doFetch()
-	if err != nil {
-		return nil, err
-	}
-	return process(respMap, action, query)
-}
-
-func (f Fetcher) doFetch() (map[string][]byte, error) {
-	var tasks = []*task{}
-	for _, item := range f.urls {
-		var (
-			method  = item.Method
-			headers = item.Headers
-			body    io.Reader
-		)
-		if !util.ValidMethod(method) {
-			method = f.method
-		}
-		if headers == nil {
-			headers = f.headers
-		}
-		if item.Body != "" {
-			body = strings.NewReader(item.Body)
-		}
-		var (
-			client       *http.Client
-			request, err = newRequest(item.URL, method, headers, body)
-			retry        = item.Retry
-			limit        = item.Limit
-		)
-		if err != nil {
-			return nil, err
-		}
-		if (item.Proxy != "" && item.Proxy != f.proxy) || (item.Timeout > 0 && item.Timeout < 120 && item.Timeout != f.timeout) {
-			client = newClient(item.Timeout, item.Proxy)
-		} else {
-			client = f.client
-		}
-
-		if retry <= 0 {
-			retry = f.retry
-		}
-		if limit <= 0 {
-			limit = f.limit
-		}
-		transform := item.Transform
-		tasks = append(tasks, &task{
-			client,
-			request,
-			retry,
-			limit,
-			transform,
-		})
-	}
-	return getTasksData(tasks)
-}
-
-func getTasksData(tasks []*task) (map[string][]byte, error) {
+// 并发执行多个http调用
+func GetTasksData(tasks []*Task) (map[string][]byte, error) {
 	var (
 		ch       = make(chan *resItem)
 		response = make(map[string][]byte)
 	)
 	for _, u := range tasks {
-		go func(taskItem *task) {
+		go func(taskItem *Task) {
 			var (
-				url       = taskItem.request.URL.String()
+				url       = taskItem.Request.URL.String()
 				resp, err = getTaskResponse(taskItem)
 			)
 			if err != nil {
@@ -202,9 +73,9 @@ func getTasksData(tasks []*task) (map[string][]byte, error) {
 				return
 			}
 			defer resp.Body.Close()
-			limitedr := http.MaxBytesReader(nil, resp.Body, int64(taskItem.limit))
+			limitedr := http.MaxBytesReader(nil, resp.Body, int64(taskItem.Limit))
 			var bytes []byte
-			if taskItem.transform {
+			if taskItem.Transform {
 				bytes, err = encoding.GbkReaderToUtf8(limitedr)
 			} else {
 				bytes, err = io.ReadAll(limitedr)
@@ -227,15 +98,15 @@ func getTasksData(tasks []*task) (map[string][]byte, error) {
 	return response, nil
 }
 
-// 复用此方法
-func getTaskResponse(taskItem *task) (*http.Response, error) {
+// 最终执行http请求的方法，多个方法最终均复用此函数
+func getTaskResponse(taskItem *Task) (*http.Response, error) {
 	var (
 		times = 0
 		resp  *http.Response
 		err   error
 	)
-	for ; times < taskItem.retry; times++ {
-		resp, err = taskItem.client.Do(taskItem.request)
+	for ; times < taskItem.Retry; times++ {
+		resp, err = taskItem.Client.Do(taskItem.Request)
 		if err == nil {
 			return resp, err
 		}
@@ -256,14 +127,14 @@ func GetResponse(url *url.URL, method string, headers http.Header, body io.Reade
 		retry = 3
 	}
 	var (
-		client       = newClient(timeout, proxy)
-		request, err = newRequest(url.String(), method, headers, body)
+		client       = NewClient(timeout, proxy)
+		request, err = NewRequest(url.String(), method, headers, body)
 		limit        = 0
 	)
 	if err != nil {
 		return nil, err
 	}
-	var taskItem = &task{
+	var taskItem = &Task{
 		client,
 		request,
 		retry,
@@ -273,20 +144,19 @@ func GetResponse(url *url.URL, method string, headers http.Header, body io.Reade
 	return getTaskResponse(taskItem)
 }
 
-// GetResponseData like GetResponse but only do GET request and return bytes for easy use
+// GetResponseData 和 GetResponse 类似，但是仅GET请求，限制响应1MB以内
 func GetResponseData(target string, timeout int, headers http.Header) ([]byte, error) {
 	var (
-		method = http.MethodGet
-		body   io.Reader
-		proxy        = ""
-		retry        = 2
-		limit  int64 = 1048576
+		body  io.Reader
+		proxy       = ""
+		retry       = 2
+		limit int64 = 1048576
 	)
 	u, err := url.Parse(target)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := GetResponse(u, method, headers, body, proxy, timeout, retry)
+	resp, err := GetResponse(u, http.MethodGet, headers, body, proxy, timeout, retry)
 	if err != nil {
 		return nil, err
 	}

@@ -2,21 +2,23 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
-	"regexp"
-	"sync"
-	"time"
 )
 
 var (
-	regproxyurl = regexp.MustCompile(`^/(?i:https?):/{1,2}[[:print:]]+$`)
 	// Log to stdout
-	Log = log.New(os.Stdout, "", 0)
+	Log = log.New(os.Stdout, "", log.Ldate|log.Ltime|log.Lshortfile)
 )
+
+type resp struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data,omitempty"`
+}
 
 // JSONPut resp json
 func JSONPut(w http.ResponseWriter, v any) (int, error) {
@@ -29,28 +31,12 @@ func JSONPut(w http.ResponseWriter, v any) (int, error) {
 	return w.Write(bs)
 }
 
-// PortOpen test port is reachable
-func PortOpen(ipPort string) bool {
-	_, err := net.DialTimeout("tcp", ipPort, time.Second)
-	if err != nil {
-		return false
-	}
-	return true
+func JSON(w http.ResponseWriter, msg string, code int) (int, error) {
+	return JSONPut(w, resp{code, msg, nil})
 }
 
-// IoCopy copy two stream
-func IoCopy(c1, c2 io.ReadWriteCloser) error {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() { io.Copy(c1, c2); wg.Done() }()
-	go func() { io.Copy(c2, c1); wg.Done() }()
-	var e1 = c1.Close()
-	var e2 = c2.Close()
-	wg.Wait()
-	if e1 == nil {
-		return e2
-	}
-	return e1
+func JSONData(w http.ResponseWriter, data any) (int, error) {
+	return JSONPut(w, resp{0, "ok", data})
 }
 
 // FileExists check if file exist or dir exist , !info.IsDir()
@@ -74,7 +60,22 @@ func ValidMethod(m string) bool {
 	return false
 }
 
-// ValidProxyURL do valid url
-func ValidProxyURL(u string) bool {
-	return regproxyurl.MatchString(u)
+// 当返回错误时，已向客户端发送错误消息
+func Parse(w http.ResponseWriter, r *http.Request, v any) error {
+	bs, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
+	if err == nil {
+		if len(bs) <= 4 {
+			err = fmt.Errorf("bad request")
+		}
+	}
+	if err != nil {
+		JSON(w, err.Error(), -2)
+		return err
+	}
+	err = json.Unmarshal(bs, v)
+	if err != nil {
+		JSON(w, err.Error(), -3)
+		return err
+	}
+	return nil
 }

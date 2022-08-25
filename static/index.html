@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>系统状态</title>
+    <link rel="stylesheet" href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-1-M/spectre.css/0.5.9/spectre.min.css">
+    <script src="https://lib.baomitu.com/vue/2.6.10/vue.min.js"></script>
+    <style>
+        .table td {
+            font-size: 12px;
+            padding: 0.2rem;
+        }
+
+        .container .label {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="columns">
+                <div class="column col-10 p-centered">
+                    <header class="navbar">
+                        <section class="navbar-section">
+                            <a href="#" class="btn btn-link" style="visibility: hidden"></a>
+                        </section>
+                    </header>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title h5">系统状态</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="container">
+                                <div class="columns">
+                                    <div class="column col-4">进程ID</div>
+                                    <div class="column col-4" v-text="status.Pid"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">在线时长</div>
+                                    <div class="column col-4" v-text="status.Uptime"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">CPU数</div>
+                                    <div class="column col-4" v-text="status.CPUNum"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">GO版本</div>
+                                    <div class="column col-4" v-text="status.GoVersion"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">协程数</div>
+                                    <div class="column col-4" v-text="status.NumGoroutine"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">分配器分配的堆空间总和</div>
+                                    <div class="column col-4">{{status.MemTotal|byteFormat}}</div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">服务现在系统使用的内存</div>
+                                    <div class="column col-4">{{status.MemSys|byteFormat}}</div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">GO语言框架堆空间大小</div>
+                                    <div class="column col-4">{{status.MemAllocated|byteFormat}}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                        </div>
+                    </div>
+
+
+                    <div class="card" style="margin-top:20px;margin-bottom:80px">
+                        <div class="card-header">
+                            <div class="card-title h5">任务状态</div>
+                        </div>
+                        <div class="card-body">
+                            <div class="container">
+                                <div class="columns">
+                                    <div class="column col-4">最大线程数</div>
+                                    <div class="column col-4" v-text="task.thread"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">当前线程数</div>
+                                    <div class="column col-4" v-text="task.runing"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">已处理数</div>
+                                    <div class="column col-4" v-text="Object.keys(task.items).length"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">等待处理数</div>
+                                    <div class="column col-4" v-text="task.tasks"></div>
+                                </div>
+                                <div class="columns">
+                                    <div class="column col-4">准备中/进行中/已完成/已失败/已忽略</div>
+                                    <div class="column col-4" v-text="taskStat"></div>
+                                </div>
+                                <div class="columns">
+
+                                    <div class="container" v-if="taskWaiting.length">
+                                        <span class="label">准备中{{taskWaiting.length}}个</span>
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>任务</th>
+                                                    <th>存储</th>
+                                                    <th>模式</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in taskWaiting">
+                                                    <td v-text="item.name"></td>
+                                                    <td v-text="item.path"></td>
+                                                    <td>{{item.mode|modeLabel}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="container" v-if="taskDoing.length">
+                                        <span class="label label-primary">进行中{{taskDoing.length}}个</span>
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>任务</th>
+                                                    <th>存储</th>
+                                                    <th>模式</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in taskDoing">
+                                                    <td v-text="item.name"></td>
+                                                    <td v-text="item.path"></td>
+                                                    <td>{{item.mode|modeLabel}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="container" v-if="taskSucceed.length">
+                                        <span class="label label-success">已完成{{taskSucceed.length}}个 </span>
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>任务</th>
+                                                    <th>存储</th>
+                                                    <th>大小</th>
+                                                    <th>开始时间</th>
+                                                    <th>结束时间</th>
+                                                    <th>耗时</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in taskSucceed">
+                                                    <td v-text="item.name"></td>
+                                                    <td v-text="item.path"></td>
+                                                    <td>{{item.size|byteFormat}}</td>
+                                                    <td>{{item.start|timeFormat}}</td>
+                                                    <td>{{item.end|timeFormat}}</td>
+                                                    <td>{{(item.end-item.start)|durFormat}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="container" v-if="taskFailed.length">
+                                        <span class="label label-error">已失败{{taskFailed.length}}个</span>
+
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>任务</th>
+                                                    <th>存储</th>
+                                                    <th>模式</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in taskFailed">
+                                                    <td v-text="item.name"></td>
+                                                    <td v-text="item.path"></td>
+                                                    <td>{{item.mode|modeLabel}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="container" v-if="taskIgnored.length">
+                                        <span class="label label-warning">已忽略{{taskIgnored.length}}个</span>
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>任务</th>
+                                                    <th>存储</th>
+                                                    <th>模式</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="item in taskIgnored">
+                                                    <td v-text="item.name"></td>
+                                                    <td v-text="item.path"></td>
+                                                    <td>{{item.mode|modeLabel}}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        new Vue({
+            el: '.wrapper',
+            data() {
+                return {
+                    status: {},
+                    task: {
+                        items: {},
+                    }
+                }
+            },
+            computed: {
+                taskStat() {
+                    return [
+                        this.taskWaiting.length,
+                        this.taskDoing.length,
+                        this.taskSucceed.length,
+                        this.taskFailed.length,
+                        this.taskIgnored.length,
+                    ].join(" / ");
+                },
+                taskWaiting() {
+                    return Object.keys(this.task.items).map(k => {
+                        return this.task.items[k];
+                    }).filter(item => {
+                        return item.status == 1;
+                    });
+                },
+                taskDoing() {
+                    return Object.keys(this.task.items).map(k => {
+                        return this.task.items[k];
+                    }).filter(item => {
+                        return item.status == 2;
+                    });
+                },
+                taskSucceed() {
+                    return Object.keys(this.task.items).map(k => {
+                        return this.task.items[k];
+                    }).filter(item => {
+                        return item.status == 3;
+                    });
+                },
+                taskFailed() {
+                    return Object.keys(this.task.items).map(k => {
+                        return this.task.items[k];
+                    }).filter(item => {
+                        return item.status == 4;
+                    });
+                },
+                taskIgnored() {
+                    return Object.keys(this.task.items).map(k => {
+                        return this.task.items[k];
+                    }).filter(item => {
+                        return item.status == 5;
+                    });
+                },
+            },
+            created() {
+                this.init();
+                setInterval(this.init, 5000);
+            },
+
+            methods: {
+                init() {
+                    fetch('/status').then(res => res.json()).then(res => {
+                        this.status = res;
+                    });
+                    fetch('/api/task/info').then(res => res.json()).then(res => {
+                        this.task = res;
+                    });
+                }
+            },
+            filters: {
+                byteFormat(size) {
+                    if (!size || size <= 0) {
+                        return '0 B';
+                    }
+                    const name = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+                    let pos = 0;
+                    while (size >= 1024) {
+                        size /= 1024;
+                        pos++;
+                    }
+                    return size.toFixed(1) + ' ' + name[pos];
+                },
+                durFormat(n) {
+                    if (n < 1) {
+                        return '1秒'
+                    }
+                    return `${n}秒`
+                },
+                timeFormat(t) {
+                    return new Date(t * 1e3).toLocaleString()
+                },
+                modeLabel(n) {
+                    const arrMap = {
+                        1: '忽略',
+                        2: '重命名',
+                        3: '覆盖',
+                        4: '追加'
+                    };
+                    return arrMap[n];
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>

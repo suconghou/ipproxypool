@@ -15,8 +15,6 @@ var (
 		"Accept",
 		"Accept-Encoding",
 		"Accept-Language",
-		"If-Modified-Since",
-		"If-None-Match",
 		"Range",
 		"Content-Length",
 		"Content-Type",
@@ -27,20 +25,9 @@ var (
 		"Content-Length",
 		"Content-Type",
 		"Content-Encoding",
-		"Date",
-		"Expires",
-		"Last-Modified",
-		"Etag",
 		"Cache-Control",
 	}
 )
-
-func cleanHeader(header http.Header, headers []string) http.Header {
-	for _, k := range headers {
-		header.Del(k)
-	}
-	return header
-}
 
 func copyHeader(from http.Header, to http.Header, headers []string) http.Header {
 	for _, k := range headers {
@@ -52,7 +39,7 @@ func copyHeader(from http.Header, to http.Header, headers []string) http.Header 
 }
 
 // URL proxy request to target
-func URL(w http.ResponseWriter, r *http.Request) {
+func URL(w http.ResponseWriter, r *http.Request, match []string) error {
 	var (
 		u         = r.RequestURI
 		reqHeader = http.Header{}
@@ -61,21 +48,27 @@ func URL(w http.ResponseWriter, r *http.Request) {
 	target, err := url.Parse(u)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	defer r.Body.Close()
 	resp, err := request.GetResponse(target, r.Method, copyHeader(r.Header, reqHeader, fwdHeaders), r.Body, "", 600, 2)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 	defer resp.Body.Close()
-	to := w.Header()
-	copyHeader(resp.Header, to, exposeHeaders)
+	h := w.Header()
+	copyHeader(resp.Header, h, exposeHeaders)
 	if resp.StatusCode == http.StatusOK {
-		to.Set("Cache-Control", "public, max-age=15552000")
+		h.Set("Cache-Control", "public, max-age=15552000")
 	}
+	h.Set("Access-Control-Allow-Origin", "*")
+	h.Set("Access-Control-Max-Age", "864000")
 	w.WriteHeader(resp.StatusCode)
-	n, err := io.Copy(w, resp.Body)
-	util.Log.Printf("%s %d %v", u, n, err)
+	if n, err := io.Copy(w, resp.Body); err == nil {
+		util.Log.Printf("%s %d %d", u, n, resp.StatusCode)
+	} else {
+		util.Log.Printf("%s %d %d %v", u, n, resp.StatusCode, err)
+	}
+	return nil
 }

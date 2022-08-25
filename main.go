@@ -3,9 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"ipproxypool/proxy"
 	"ipproxypool/route"
-	"ipproxypool/spider"
 	"ipproxypool/util"
 	"net/http"
 	"os"
@@ -32,23 +30,11 @@ var sysStatus struct {
 
 func main() {
 	var (
-		port        = *flag.Int("p", 6060, "listen port")
-		host        = *flag.String("h", "", "bind address")
-		root        = *flag.String("d", "", "document root")
-		proxyfetch  = *flag.Bool("proxyfetch", false, "enable proxy fetch")
-		proxylisten = *flag.String("proxylisten", "", "proxy listen adr")
+		port = *flag.Int("p", 6060, "listen port")
+		host = *flag.String("h", "", "bind address")
+		root = *flag.String("d", "", "document root")
 	)
 	flag.Parse()
-	if proxyfetch {
-		go spider.Start()
-	}
-	if proxylisten != "" {
-		go func() {
-			if err := proxy.Serve(proxylisten); err != nil {
-				util.Log.Print(err)
-			}
-		}()
-	}
 	util.Log.Fatal(serve(host, port, root))
 }
 
@@ -95,11 +81,7 @@ func fallback(w http.ResponseWriter, r *http.Request) {
 		files = []string{r.URL.Path, path.Join(r.URL.Path, index)}
 	}
 	if !tryFiles(files, w, r) {
-		if util.ValidProxyURL(r.RequestURI) {
-			proxy.URL(w, r)
-		} else {
-			http.NotFound(w, r)
-		}
+		http.NotFound(w, r)
 	}
 }
 
