@@ -1,6 +1,7 @@
 package stream
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"ipproxypool/request"
@@ -48,19 +49,21 @@ type TaskItem struct {
 
 // WorkerStatus intro work status
 type WorkerStatus struct {
-	Thread int32                `json:"thread"`
-	Runing int32                `json:"runing"`
-	Tasks  int                  `json:"tasks"`
-	Items  map[string]*TaskItem `json:"items"`
+	Thread   int32                `json:"thread"`
+	Runing   int32                `json:"runing"`
+	Tasks    int                  `json:"tasks"`
+	Pendings map[string]*TaskItem `json:"pendings"` // 正在处理的
+	Items    []*TaskItem          `json:"items"`    // 已处理完毕的
 }
 
 // Worker do job
 type Worker struct {
-	thread    int32
-	runing    int32
-	receive   chan *TaskItem
-	statusMap map[string]*TaskItem
-	r         *sync.RWMutex
+	thread   int32
+	runing   int32
+	receive  chan *TaskItem
+	pendings map[string]*TaskItem
+	items    []*TaskItem
+	r        *sync.RWMutex
 }
 
 // Put taskitem to this worker
@@ -88,14 +91,17 @@ func (w *Worker) start() {
 				t.before()
 				// 忽略重复任务,根据name(url地址)字段判断
 				w.r.Lock()
-				item := w.statusMap[t.Name]
-				// 任务不存在或者存在但是Rejected状态，可以继续
-				if item == nil || item.Status == 4 {
-					w.statusMap[t.Name] = t
+				// 如果进行中的任务没有这个则可以允许，后续根据Mode策略检测
+				if _, exist := w.pendings[t.Name]; !exist {
+					w.pendings[t.Name] = t
 					w.r.Unlock()
 					if err := t.after(t.start()); err != nil {
 						util.Log.Print(err)
 					}
+					w.r.Lock()
+					delete(w.pendings, t.Name)
+					w.items = append(w.items, t)
+					w.r.Unlock()
 				} else {
 					w.r.Unlock()
 				}
@@ -108,16 +114,18 @@ func (w *Worker) start() {
 }
 
 // GetStatus return worker status
-func (w *Worker) GetStatus() *WorkerStatus {
+func (w *Worker) GetStatus() ([]byte, error) {
 	w.r.RLock()
 	status := &WorkerStatus{
-		Thread: w.thread,
-		Runing: atomic.LoadInt32(&w.runing),
-		Tasks:  len(w.receive),
-		Items:  w.statusMap,
+		Thread:   w.thread,
+		Runing:   atomic.LoadInt32(&w.runing),
+		Tasks:    len(w.receive),
+		Items:    w.items,
+		Pendings: w.pendings,
 	}
+	bs, err := json.Marshal(status)
 	w.r.RUnlock()
-	return status
+	return bs, err
 }
 
 func (t *TaskItem) start() (int64, string, error) {
@@ -131,7 +139,7 @@ func (t *TaskItem) start() (int64, string, error) {
 	if exist {
 		switch t.Mode {
 		case itemModeRename:
-			fpath = fmt.Sprintf("%s.%d", t.Path, time.Now().Unix())
+			fpath = fmt.Sprintf("%s.%d", t.Path, time.Now().Unix()) // 如果这个也重名，则文件被覆盖
 		case itemModeAppend:
 			flag = os.O_WRONLY | os.O_APPEND
 		case itemModeOverWrite:

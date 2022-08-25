@@ -24,7 +24,7 @@
     <div class="wrapper">
         <div class="container">
             <div class="columns">
-                <div class="column col-10 p-centered">
+                <div class="column col-12 p-centered">
                     <header class="navbar">
                         <section class="navbar-section">
                             <a href="#" class="btn btn-link" style="visibility: hidden"></a>
@@ -91,7 +91,7 @@
                                 </div>
                                 <div class="columns">
                                     <div class="column col-4">已处理数</div>
-                                    <div class="column col-4" v-text="Object.keys(task.items).length"></div>
+                                    <div class="column col-4" v-text="task.items.length"></div>
                                 </div>
                                 <div class="columns">
                                     <div class="column col-4">等待处理数</div>
@@ -225,11 +225,16 @@
                 return {
                     status: {},
                     task: {
-                        items: {},
+                        pendings: {},
+                        items: [],
                     }
                 }
             },
             computed: {
+                allitems() {
+                    const p = this.task.pendings;
+                    return Object.keys(p).map(k => p[k]).concat(this.task.items)
+                },
                 taskStat() {
                     return [
                         this.taskWaiting.length,
@@ -240,37 +245,27 @@
                     ].join(" / ");
                 },
                 taskWaiting() {
-                    return Object.keys(this.task.items).map(k => {
-                        return this.task.items[k];
-                    }).filter(item => {
+                    return this.allitems.filter(item => {
                         return item.status == 1;
                     });
                 },
                 taskDoing() {
-                    return Object.keys(this.task.items).map(k => {
-                        return this.task.items[k];
-                    }).filter(item => {
+                    return this.allitems.filter(item => {
                         return item.status == 2;
                     });
                 },
                 taskSucceed() {
-                    return Object.keys(this.task.items).map(k => {
-                        return this.task.items[k];
-                    }).filter(item => {
+                    return this.allitems.filter(item => {
                         return item.status == 3;
                     });
                 },
                 taskFailed() {
-                    return Object.keys(this.task.items).map(k => {
-                        return this.task.items[k];
-                    }).filter(item => {
+                    return this.allitems.filter(item => {
                         return item.status == 4;
                     });
                 },
                 taskIgnored() {
-                    return Object.keys(this.task.items).map(k => {
-                        return this.task.items[k];
-                    }).filter(item => {
+                    return this.allitems.filter(item => {
                         return item.status == 5;
                     });
                 },

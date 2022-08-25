@@ -19,9 +19,10 @@ func init() {
 // NewWorker create new worker
 func NewWorker() *Worker {
 	return &Worker{
-		thread:    20,
-		receive:   make(chan *TaskItem, 100),
-		statusMap: map[string]*TaskItem{},
-		r:         &sync.RWMutex{},
+		thread:   20,
+		receive:  make(chan *TaskItem, 100),
+		pendings: map[string]*TaskItem{},
+		items:    []*TaskItem{},
+		r:        &sync.RWMutex{},
 	}
 }

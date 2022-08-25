@@ -22,8 +22,12 @@ type taskItem struct {
 
 // 下载队列信息
 func Info(w http.ResponseWriter, r *http.Request, match []string) error {
-	var ret = stream.DefaultWorker.GetStatus()
-	_, err := util.JSONPut(w, ret)
+	var bs, err = stream.DefaultWorker.GetStatus()
+	if err != nil {
+		_, err = util.JSON(w, err.Error(), -2)
+		return err
+	}
+	_, err = util.JSONPut(w, bs)
 	return err
 }
 
