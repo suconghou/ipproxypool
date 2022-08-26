@@ -30,12 +30,12 @@ var sysStatus struct {
 
 func main() {
 	var (
-		port = *flag.Int("p", 6060, "listen port")
-		host = *flag.String("h", "", "bind address")
-		root = *flag.String("d", "", "document root")
+		port = flag.Int("p", 6060, "listen port")
+		host = flag.String("h", "", "bind address")
+		root = flag.String("d", "", "document root")
 	)
 	flag.Parse()
-	util.Log.Fatal(serve(host, port, root))
+	util.Log.Fatal(serve(*host, *port, *root))
 }
 
 func serve(host string, port int, root string) error {
