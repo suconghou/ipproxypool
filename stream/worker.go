@@ -164,7 +164,7 @@ func (t *TaskItem) start() (int64, string, error) {
 	defer file.Close()
 	n, err := io.Copy(file, resp.Body)
 	if err == nil {
-		if resp.StatusCode < http.StatusOK || resp.StatusCode > http.StatusIMUsed {
+		if resp.StatusCode/100 != 2 {
 			// status not ok, we logger
 			err = fmt.Errorf("%v %s", t.URL, resp.Status)
 		}
