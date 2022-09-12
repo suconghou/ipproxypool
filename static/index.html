@@ -131,6 +131,8 @@
                                                     <th>任务</th>
                                                     <th>存储</th>
                                                     <th>模式</th>
+                                                    <th>开始时间</th>
+                                                    <th>耗时</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -138,6 +140,8 @@
                                                     <td v-text="item.name"></td>
                                                     <td v-text="item.path"></td>
                                                     <td>{{item.mode|modeLabel}}</td>
+                                                    <td>{{item.start|timeFormat}}</td>
+                                                    <td>{{Math.round((Date.now()/1000-item.start))|durFormat}}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -302,7 +306,11 @@
                     if (n < 1) {
                         return '1秒'
                     }
-                    return `${n}秒`
+                    if (n <= 60) {
+                        return `${n}秒`
+                    }
+                    const x = Math.floor(n / 60);
+                    return `${x}分${n - 60 * x}秒`
                 },
                 timeFormat(t) {
                     return new Date(t * 1e3).toLocaleString()
