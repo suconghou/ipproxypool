@@ -48,10 +48,16 @@ func JSONData(w http.ResponseWriter, data any) (int, error) {
 	return JSONPut(w, resp{0, "ok", data})
 }
 
-// FileExists check if file exist or dir exist , !info.IsDir()
+// 文件或文件夹存在返回true,特别的如果是一个空文件报告为false,使得上层可以覆盖这个文件
 func FileExists(filename string) bool {
-	_, err := os.Stat(filename)
+	s, err := os.Stat(filename)
 	if err == nil {
+		if s.IsDir() {
+			return true
+		}
+		if s.Size() < 1 {
+			return false
+		}
 		return true
 	} else if os.IsNotExist(err) {
 		return false

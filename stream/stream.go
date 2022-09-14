@@ -9,12 +9,8 @@ import "sync"
 
 var (
 	// DefaultWorker for http api use
-	DefaultWorker *Worker
-)
-
-func init() {
 	DefaultWorker = NewWorker()
-}
+)
 
 // NewWorker create new worker
 func NewWorker() *Worker {
