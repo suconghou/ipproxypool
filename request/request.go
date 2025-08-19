@@ -2,7 +2,6 @@ package request
 
 import (
 	"io"
-	"ipproxypool/encoding"
 	"ipproxypool/util"
 	"net/http"
 	"net/url"

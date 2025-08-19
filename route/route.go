@@ -1,8 +1,6 @@
 package route
 
 import (
-	"ipproxypool/proxy"
-	"ipproxypool/query"
 	"ipproxypool/tasks"
 	"net/http"
 	"regexp"
@@ -18,6 +16,4 @@ type routeInfo struct {
 var Route = []routeInfo{
 	{regexp.MustCompile(`^/api/task/info$`), tasks.Info},
 	{regexp.MustCompile(`^/api/task/add$`), tasks.Add},
-	{regexp.MustCompile(`^/api/fetch/(\w{1,10})$`), query.GoQuery},
-	{regexp.MustCompile(`^/(?i:https?):/{1,2}[[:print:]]+$`), proxy.URL},
 }
